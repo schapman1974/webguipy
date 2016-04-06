@@ -1,4 +1,4 @@
-#guipy
+#WebGuiPy
 
 #License
 GPLv2 
