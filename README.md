@@ -14,6 +14,78 @@ As well this system is designed to run on linux and a windows environment.  And 
 ###Development Environment
 Included in this release is an IDE of sorts that was written using the framework itself.   This IDE will allow for simple modification and previewing of your application.
 
+###Example Code
+```python
+from rempbapiweb import spool, tr
+
+class module(spool):
+
+    def initScreen(self):
+        #Add a menubar to the main window
+        self.addMenu("someMenu")
+        
+        #add a file menu item with save under it
+        self.someMenu.addMenuItem("MAIN","file", "File", "WINDOWS.png")
+        self.someMenu.addMenuItem("file","save", "Save", "SAVE.png")
+        #add an edit menu item with cut/copy/paste under it
+        self.someMenu.addMenuItem("MAIN","edit", "Edit", "EDIT.png")
+        self.someMenu.addMenuItem("edit","cut",  "Cut",  "CUT.png")
+        self.someMenu.addMenuItem("edit","copy", "Copy", "COPY.png")
+        self.someMenu.addMenuItem("edit","paste","Paste","PASTE.png")
+        
+        #Add a toolbar to the main window with 48 point size icons and aligned left
+        self.addToolbar("someToolbar",48,"left")
+        self.someToolbar.addButton("openfile","Open File","OPENFILE.png")
+        self.someToolbar.addStretch()
+        self.someToolbar.addButton("exit","Exit","EXIT.png")
+        
+        #Add the initial Layout to the form and tell the layout what pattern to take
+        self.addLayout("demolayout","2E")
+        self.demolayout.addGrid("someGrid","a")
+        #function fillGrid created below
+        self.fillGrid()
+        
+        #Set the height of element a in the demolayout which is the bottom most layout
+        self.demolayout.setHeight(50,"b")
+        
+        #Add a toolbar to the bottom most layout 32 point size icons and aligned right
+        self.demolayout.addToolbar("bottomTool",32,"right","b")
+        #Add refresh button to the bottom toolbar
+        self.bottomTool.addButton("refresh","Refresh","REFRESH.png")
+        
+        #add signals
+        #add the onClick signalto the menubar and connect it to a function
+        self.addSignal(self.someMenu,        "onClick",          self.doMenuBar)   # onClick will return the itemname,ischecked,parentname as parameters
+        
+        #add the onClick signal to the toolbars and connect it to a function.
+        self.addSignal(self.someToolbar,     "onClick",          self.doToolBar)   # onClick will return the button name as a parameter
+        self.addSignal(self.bottomTool,      "onClick",          self.doToolBar)
+        
+        #add the onRowDblClicked signal to the grid and connect it to a function
+        self.addSignal(self.someGrid,        "onRowDblClicked",  self.gridClicked) # onRowDblClicked will return rowKey,columnIndex,rowIndex as parameters
+        
+    def doMenuBar(self,moduleName,isChecked,parentObject):
+        self.messageBox("popup",moduleName)
+        
+    def doToolBar(self,moduleName):
+        self.messageBox("popup",moduleName)
+        
+    def fillGrid(self):
+        self.someGrid.clearItems()
+        showDat=[['key1','Some Question 1','Some Answer 1','SomeText 1','MoreText 1'],
+                 ['key2','Some Question 2','Some Answer 2','SomeText 2','MoreText 2'],
+                 ['key3','Some Question 3','Some Answer 3','SomeText 3','MoreText 3'],
+                 ['key4','Some Question 4','Some Answer 4','SomeText 4','MoreText 4'],
+                 ['key5','Some Question 5','Some Answer 5','SomeText 5','MoreText 5']]
+                 
+        self.someGrid.setTableHeaders(['Question','Answer','SomeText',"MoreText"])
+        self.someGrid.setTableWidths([300,300,300,"*"])
+        self.someGrid.setTableColTypes(["ro","ro","ro","ro"])
+        self.someGrid.fillTableMany(showDat)
+        
+    def gridClicked(self,rowKey,columnIndex,rowIndex):
+        self.messageBox("popup",rowKey)
+```
 
 #License
 GPLv2 
