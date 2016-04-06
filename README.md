@@ -90,6 +90,10 @@ class module(spool):
         self.messageBox("popup",rowKey)
 ```
 
+The code above will render the following screen on the browser.
+
+![Alt text](example/webguipyex1.png "Example")
+
 #License
 GPLv2 
 http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
