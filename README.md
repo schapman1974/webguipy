@@ -11,7 +11,9 @@ This system relies heavily on in-memory wsgi sessions to be maintained and shoul
 ###Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
     
-  
+###Development Environment
+Included in this release is an IDE of sorts that was written using the framework itself.   This IDE will allow for simple modification and previewing of your application.
+
 
 #License
 GPLv2 
