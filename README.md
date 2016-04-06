@@ -93,6 +93,7 @@ class module(spool):
 The code above will render the following screen on the browser.
 
 ![Example](https://github.com/schapman1974/webguipy/blob/master/img/webguipyex1.png "Example")
+[![Example](https://img.youtube.com/vi/bI3DVL6oyjY/0.jpg)](https://www.youtube.com/watch?v=bI3DVL6oyjY)
 
 #License
 GPLv2 
