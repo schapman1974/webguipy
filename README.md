@@ -1,1 +1,4 @@
-guipy
+#guipy
+
+#License
+GPLv2
