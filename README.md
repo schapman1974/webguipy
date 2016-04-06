@@ -55,14 +55,17 @@ class module(spool):
         
         #add signals
         #add the onClick signalto the menubar and connect it to a function
-        self.addSignal(self.someMenu,        "onClick",          self.doMenuBar)   # onClick will return the itemname,ischecked,parentname as parameters
+        self.addSignal(self.someMenu,        "onClick",          self.doMenuBar)   
+        # onClick will return the itemname,ischecked,parentname as parameters
         
         #add the onClick signal to the toolbars and connect it to a function.
-        self.addSignal(self.someToolbar,     "onClick",          self.doToolBar)   # onClick will return the button name as a parameter
-        self.addSignal(self.bottomTool,      "onClick",          self.doToolBar)
+        self.addSignal(self.someToolbar,     "onClick",          self.doToolBar)
+        self.addSignal(self.bottomTool,      "onClick",          self.doToolBar)   
+        # onClick will return the button name as a parameter
         
         #add the onRowDblClicked signal to the grid and connect it to a function
-        self.addSignal(self.someGrid,        "onRowDblClicked",  self.gridClicked) # onRowDblClicked will return rowKey,columnIndex,rowIndex as parameters
+        self.addSignal(self.someGrid,        "onRowDblClicked",  self.gridClicked)
+        # onRowDblClicked will return rowKey,columnIndex,rowIndex as parameters
         
     def doMenuBar(self,moduleName,isChecked,parentObject):
         self.messageBox("popup",moduleName)
