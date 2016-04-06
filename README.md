@@ -6,7 +6,7 @@ This project is a GUI framework that allows a programmer to code a complete 'GUI
 Other components have been included in this system including the ace editor released under the BSD license.  Other javascript libraries can be added to this project and function calls created for them.
 
 ###Single Process WSGI
-This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions implemented for the front end to allow the user to connect to the same process.  With wsgi threading turned on I have had no problem being able to maintain a high level of availablity on this service as file IO is kept to a bare miniumum.
+This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions implemented for the webserver/proxy to allow the user to connect to the same process.  With wsgi threading turned on I have had no problem being able to maintain a high level of availablity on this service as file IO is kept to a bare miniumum.
     
 ###Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
