@@ -8,6 +8,7 @@ Other components have been included in this system including the ace editor rele
 ##Single Process WSGI
 This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions included implemented for the front end to allow the user to connect to the same process.
     
+##Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
     
   
