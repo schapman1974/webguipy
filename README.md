@@ -5,8 +5,11 @@ This project is a GUI framework that allows a programmer to code a complete 'GUI
 ###Other Components
 Other components have been included in this system including the ace editor released under the BSD license.  Other javascript libraries can be added to this project and function calls created for them.
 
-###WSGI Sessions
-This system uses sessions stored as pickle files and can get picked back up by any process.  However what this means is that any python object that cannot be pickled must have a wrapper written for it that can use an import of the actual library.  This is true with most database connections.  This limitation is considered okay to deal with because in memory sessions would require one process each and the system would not be very scalable as a result.
+###Single Process WSGI
+This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions implemented for the webserver/proxy to allow the user to connect to the same process. With wsgi threading turned on I have had no problem being able to maintain a high level of availablity on this service.
+
+####Why Single Process
+There are two reasons I chose this route for this project.  The first being that the connection objects are very important to the overall experience of being able to just code along in python as if you were writing any other gui program.  The second reason is a bit more in depth but to make it simple the two way communications between python and the browser is easier accomplished if one process is handling it.  Its a bit more in depth than that and there are other ways of dealing with this possibly in the future.
     
 ###Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
