@@ -9,7 +9,7 @@ Other components have been included in this system including the ace editor rele
 This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions implemented for the webserver/proxy to allow the user to connect to the same process. With wsgi threading turned on I have had no problem being able to maintain a high level of availablity on this service.
 
 ####Why Single Process
-The main reason that single process is because of blocking calls.  See the diagrams and comments below.
+The main reason that single process is required is blocking calls.  See the diagrams and comments below.
 
 #### --- WILL NOT WORK!!! ---
 ![Multiprocess](https://github.com/schapman1974/webguipy/blob/master/img/multiprocess.png "Multiprocess")
