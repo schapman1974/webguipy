@@ -10,7 +10,13 @@ This system relies heavily on in-memory wsgi sessions to be maintained and shoul
 
 ####Why Single Process
 There are three reasons I chose this route for this project.  The first being that the connection objects are very important to the overall experience of being able to just code along in python as if you were writing any other gui program.  The second reason is a bit more in depth but to make it simple the two way communications between python and the browser is easier accomplished if one process is handling it.  Its a bit more in depth than that and there are other ways of dealing with this possibly in the future.  The third reason is a bit more pragmatic. This system is really designed to build user based applications such as what you would see on a desktop or on a control panel.  If you choose to use it to make it a webpage you would just need to manage your wsgi processes seperately.
-    
+#### --- WILL NOT WORK!!! ---
+![Multiprocess](https://github.com/schapman1974/webguipy/blob/master/img/multiprocess.png "Multiprocess")
+As you can see above there is not really a way to run two portions of a blocking call such as a getval and return some data while maintaining the function across two processes.  This goes straight to the core of what I think is the real problem with doing this type of gui programming across processes.  
+#### --- WILL WORK JUST FINE ---
+![Singleprocess](https://github.com/schapman1974/webguipy/blob/master/img/singleprocess.png "Singleprocess")
+As you can see that instead of using multiple processes in this scenerio I am using a single process multiple times and using sticky sessions I can force a client by cookie or by IP to connect to the same process.  This has nothing to do with session storage.  It has everthing to do with natural function programming in python.  Blocking calls that require a return value from the gui (in this case the Browser) require things to be done in the same thread.  If anyone has another idea of how to handle this I would be more than willing to listen.
+
 ###Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
     
