@@ -9,7 +9,8 @@ Other components have been included in this system including the ace editor rele
 This system relies heavily on in-memory wsgi sessions to be maintained and should be run as a single process or a single process multiple times with some sort of sticky sessions implemented for the webserver/proxy to allow the user to connect to the same process. With wsgi threading turned on I have had no problem being able to maintain a high level of availablity on this service.
 
 ####Why Single Process
-There are three reasons I chose this route for this project.  The first being that the connection objects are very important to the overall experience of being able to just code along in python as if you were writing any other gui program.  The second reason is a bit more in depth but to make it simple the two way communications between python and the browser is easier accomplished if one process is handling it.  Its a bit more in depth than that and there are other ways of dealing with this possibly in the future.  The third reason is a bit more pragmatic. This system is really designed to build user based applications such as what you would see on a desktop or on a control panel.  If you choose to use it to make it a webpage you would just need to manage your wsgi processes seperately.
+The main reason that single process is because of blocking calls.  See the diagrams and comments below.
+
 #### --- WILL NOT WORK!!! ---
 ![Multiprocess](https://github.com/schapman1974/webguipy/blob/master/img/multiprocess.png "Multiprocess")
 As you can see above there is not really a way to run two portions of a blocking call such as a getval and return some data while maintaining the function across two processes.  This goes straight to the core of what I think is the real problem with doing this type of gui programming across processes.  
