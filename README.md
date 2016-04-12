@@ -13,10 +13,12 @@ The main reason that single process is required is blocking calls.  See the diag
 
 #### --- WILL NOT WORK!!! ---
 ![Multiprocess](https://github.com/schapman1974/webguipy/blob/master/img/multiprocess.png "Multiprocess")
+
 As you can see above there is not really a way to run two portions of a single function between processes.  
+
 #### --- WILL WORK JUST FINE ---
 ![Singleprocess](https://github.com/schapman1974/webguipy/blob/master/img/singleprocess.png "Singleprocess")
-As you can see that instead of using multiple processes in this scenerio I am using a single process multiple times and using sticky sessions I can force a client by cookie or by IP to connect to the same process.  This has nothing to do with session storage.  It has everthing to do with natural function programming in python.  Blocking calls that require a return value from the gui (in this case the Browser) require things to be done in the same thread.  If anyone has another idea of how to handle this I would be more than willing to listen.
+Instead of using multiple processes in this scenerio I am using a single process multiple times and using sticky sessions I can force a client by cookie or by IP to connect to the same process.  This has nothing to do with session storage.  It has everthing to do with natural function programming in python.  Blocking calls that require a return value from the gui (in this case the Browser) require things to be done in the same thread.  If anyone has another idea of how to handle this I would be more than willing to listen.
 
 ###Environments
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
