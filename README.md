@@ -22,7 +22,7 @@ As you can see that instead of using multiple processes in this scenerio I am us
 As well this system is designed to run on linux and a windows environment.  And will include binaries for windows use directly as a service.
     
 ###Development Environment
-Included in this release is an IDE of sorts that was written using the framework itself.   This IDE will allow for simple modification and previewing of your application.
+Included in this release is an IDE that was written using the framework itself.   This IDE will allow for simple modification and previewing of your application.
 
 ###Example Code
 ```python
