@@ -1,5 +1,7 @@
 #WebGuiPy
 
+##NOT CURRENTLY FUNCTIONING!!
+
 This project is a GUI framework that allows a programmer to code a complete 'GUI' application directly for a web browser by using only Python Code.  The framework has its own function calls that will directly send commands to the ajax portion of this system and communicate with the widgetset library to accomplish a 'GUI' look and feel to the created program.  The widgetset used in this system is provided by dhtmlx.com and is licensed under GPLv2.
     
 ###Other Components
