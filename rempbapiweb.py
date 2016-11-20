@@ -14,7 +14,7 @@ import re
 from bson.objectid import ObjectId
 from datetime import timedelta, datetime
 import urllib2
-#import ziptestweb
+import ziptestweb
 
 """
 set platform seperator for library to use
@@ -145,8 +145,12 @@ class spool(object):
         self.DateOnly     = 106
         self.StrNoSpaces  = 107
         self.ZipCode      = 108
-        
-        self.STATES = ['AK - Alaska','AL - Alabama','AR - Arkansas','AS - American Samoa','AZ - Arizona','CA - California','CO - Colorado','CT - Connecticut','DC - District of Columbia','DE - Delaware','FL - Florida','GA - Georgia','GU - Guam','HI - Hawaii','IA - Iowa','ID - Idaho','IL - Illinois','IN - Indiana','KS - Kansas','KY - Kentucky','LA - Louisiana','MA - Massachusetts','MD - Maryland','ME - Maine','MI - Michigan','MN - Minnesota','MO - Missouri','MP - Northern Mariana Islands','MS - Mississippi','MT - Montana','NA - National','NC - North Carolina','ND - North Dakota','NE - Nebraska','NH - New Hampshire','NJ - New Jersey','NM - New Mexico','NV - Nevada','NY - New York','OH - Ohio','OK - Oklahoma','OR - Oregon','PA - Pennsylvania','PR - Puerto Rico','RI - Rhode Island','SC - South Carolina','SD - South Dakota','TN - Tennessee','TX - Texas','UT - Utah','VA - Virginia','VI - Virgin Islands','VT - Vermont','WA - Washington','WI - Wisconsin','WV - West Virginia','WY - Wyoming']
+
+        try:
+            self.addressWidget("dhxWins","WINDOWMANAGER")
+        except:
+            pass
+
         self.startAPICall()
 
     def spinSpool(self,parent,theid,tracelog,dbconn,cursor,modname):
@@ -172,13 +176,6 @@ class spool(object):
         self.uiSpoolID      = parent.parent.uiSpoolID
         self.env            = parent.parent.theEnv
         self.valueBuffer    = []
-        self.typeTransMat   = {"BUTTON"      : {"clicked"          : ["clicked()",            "    def %s_clicked(self)\n"],
-                                                "pressed"          : ["pressed()",            "    def %s_pressed(self)\n"],
-                                                "released"         : ["released()",           "    def %s_released(self)\n"]},
-                               "LINEEDIT"    : {"returnPressed"    : ["returnPressed()",      "    def %s_returnPressed(self)\n"],
-                                                "textChanged"      : ["textChanged(QString)", "    def %s_textChanged(self,theText)\n"],
-                                                "editingFinished"  : ["editingFinished()",    "    def %s_editingFinished(self)\n"]}
-                              }
         self.stopAPICall()
          
     
@@ -198,21 +195,6 @@ class spool(object):
         """
         #subclass me
         pass
-
-    def widgetSigTranslate(self,defstring):
-        """
-        Used from outside this module to translate functions that contain _signalname so that addsignal is not needed
-
-        :param defstring:
-        """
-        #TODO CURRENTLY DOES NOT WORK DECIDE WEHTER TO KEEP THIS FEATURE
-        wName   = defstring[:defstring.rfind("_")]
-        sigtype = defstring[defstring.rfind("_"):].lstrip("_").split("(")[0]
-        if wName in self.getWidgetDict():
-            if self.__dict__.has_key(wName):
-                if self.typeTransMat.has_key(self.__dict__[wName].type):
-                    if self.typeTransMat[self.__dict__[wName].type].has_key(sigtype):
-                        self.addSignal(self.__dict__[wName],self.typeTransMat[self.__dict__[wName].type][sigtype][0],wName+"_"+sigtype)
 
     def startAPICall(self):
         """
@@ -450,37 +432,25 @@ class spool(object):
         self.stopAPICall()
         
     def cleanupThreads(self):
+        """
+        """
         self.startAPICall()
         directive=['cleanupthreads','',self.currentModName]
         self.cache.append(self.spoolID+"send"+self.threadID,directive)
         self.stopAPICall()
         
-    def getCOMGlobals(self):
-        self.startAPICall()
-        directive=['getcomglobals','',self.spoolID,'']+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        currdata = self.getMain(999)
-        self.stopAPICall()
-        return currdata
-        
     def getWidgetDict(self):
+        """
+        """
         self.startAPICall()
         widgetDict=self.cache.get(self.software+"uiDict"+self.uiSpoolID+self.currentModName)
         self.stopAPICall()
         return widgetDict
 
-    def setBeforeCall(self,adef):
-        self.startAPICall()
-        self.cache.set("beforeCall"+self.uiSpoolID+self.currentModName,adef.__name__)
-        self.stopAPICall()
-        
-    def setAfterCall(self,adef):
-        self.startAPICall()
-        self.cache.set("afterCall"+self.uiSpoolID+self.currentModName,adef.__name__)
-        self.stopAPICall()
-
-    #create a widget in the current scope
     def addressWidget(self,widget,atype,parentWidget=None,customlib="",addressClass=None):
+        """
+        create a widget in the current scope
+        """
         self.startAPICall()
         if addressClass is None:addressClass=Widget
         widget=str(widget)
@@ -496,6 +466,8 @@ class spool(object):
         
     #add a signal to a widget and set code server side that will run when that signal is triggered
     def addSignal(self,widget,signal,calldef,*returnargs,**kwargs):
+        """
+        """
         kwargList = ['returnvals','sigallow','calldefwidget','timeout','keytimeout']
         for argname in kwargs.keys():
             if not argname in kwargList:
@@ -566,125 +538,74 @@ class spool(object):
         self.cache.append(self.spoolID+"send"+self.threadID,directive)
         self.stopAPICall()
 
-    def addWebSocket(self,socketname,wsurl,wsprotocol):
+    def passDirective(self,directive,addWidgetName=None,addWidgetType=None,returnTimeout=15):
         self.startAPICall()
-        directive=['addwebsocket',"mainwindow",socketname,"WINDOW",wsurl,wsprotocol]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.addressWidget(socketname,"WEBSOCKET")
-        self.updateWidgets(socketname,"WEBSOCKET")
+        self.passCall(directive)
+        if not addWidgetName is None:self.addressWidget(addWidgetName,addWidgetType)
         self.stopAPICall()
- 
-    def createMainWindow(self,pattern,skin):
-        self.startAPICall()
-        directive=['createmainwindow',"mainwindow",pattern,"WINDOW",skin]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.addressWidget("mainwindow","WINDOW")
-        self.updateWidgets("mainwindow","WINDOW")
-        self.stopAPICall()
+        if directive[-1]=="blockingCall":
+            return self.getMain(returnTimeout)
+        else:
+            return None
 
+    def addWebSocket(self,socketname,wsurl,wsprotocol):
+        directive=['addwebsocket',"mainwindow",socketname,"WINDOW",wsurl,wsprotocol]
+        self.passDirective(directive,socketname,"WEBSOCKET")
+ 
     def addToolbar(self,toolBarWidget,iconsize=32,alignment="left"):
-        self.startAPICall()
         if type(toolBarWidget) != str:toolBarWidget = toolBarWidget.name
-        self.addressWidget(toolBarWidget,"TOOLBAR")
         directive=['addtoolbar',"mainwindow",toolBarWidget,"WINDOW",iconsize,alignment]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,toolBarWidget,"TOOLBAR")
 
     def addMenu(self,menuWidget):
-        self.startAPICall()
         if type(menuWidget) != str:menuWidget = menuWidget.name
-        self.addressWidget(menuWidget,"MENU")
         directive=['addmenu',"mainwindow",menuWidget,"WINDOW"]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,menuWidget,"MENU")
 
     def addLayout(self,layoutWidget,pattern,cell="a"):
-        self.startAPICall()
         if type(layoutWidget) != str:layoutWidget = layoutWidget.name
         directive=['addlayout',"mainwindow",layoutWidget,self.type,cell,pattern]
-        self.passCall(directive)
-        self.addressWidget(layoutWidget,"LAYOUT")
-        self.stopAPICall()
+        self.passDirective(directive,layoutWidget,"LAYOUT")
    
     def addForm(self,formWidget,formdata,cell="a"):
-        self.startAPICall()
         if type(formWidget) != str:formWidget = formWidget.name
         directive=['addform',"mainwindow",formWidget,self.type,cell,formdata]
-        self.passCall(directive)
-        self.addressWidget(formWidget,"FORM")
-        self.stopAPICall()
+        self.passDirective(directive,formWidget,"FORM")
  
     def setStyle(self,skin):
-        self.startAPICall()
         directive=['setstyle',"mainwindow",skin,"WINDOW"]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def removeToolBar(self,toolBarWidget):
-        self.startAPICall()
         if type(toolBarWidget) != str:toolBarWidget = toolBarWidget.name
         directive=['removetoolbar',"","",toolBarWidget]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def addToolBarBreak(self,toolBarWidget):
-        self.startAPICall()
         if type(toolBarWidget) != str:toolBarWidget = toolBarWidget.name
         directive=['addtoolbarbreak',"","",toolBarWidget]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-
-    def setFutureCall(self,calldef,waittime=2.0):
-        self.startAPICall()
-        if not type(calldef) is str:calldef=calldef.__name__
-        directive=['setfuturecall',calldef,self.currentModName,waittime]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def makeTimer(self,widgetName,interval,calldef=""):
-        self.startAPICall()
         if not type(calldef) is str:calldef=calldef.__name__
-        self.addressWidget(widgetName,"TIMER")
         directive=['maketimer',widgetName,calldef,interval]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,widgetName,"TIMER")
 
     def makeStopWatch(self,elementName):
-        self.startAPICall()
-        self.addressWidget(elementName,"STOPWATCH")
         directive=['makestopwatch',elementName]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,elementName,"STOPWATCH")
 
     def setGlobalCaretInsert(self,keyCode,insertString):
-        self.startAPICall()
         directive=['setglobalcaretinsert',keyCode,insertString]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def storeSoftwareSetting(self,setting,value):
-        self.startAPICall()
         directive=['storesoftwaresetting',setting,value]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def getSoftwareSetting(self,setting,default=""):
-        self.startAPICall()
         directive=['getsoftwaresetting',setting,self.spoolID,default]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     def getRemoteWidgets(self,parent="mainwindow",parentWidget=None,internal=False):
         self.startAPICall()
@@ -707,6 +628,7 @@ class spool(object):
                self.cache.delete(self.spoolID+"receive"+self.threadID)
                break
         self.stopAPICall()
+        print "remote widgets",currdata
         if currdata!="":
             try:
                 adict = json.loads(currdata)
@@ -723,29 +645,25 @@ class spool(object):
         return adict
 
     def setExitDef(self,calldef):
-        self.startAPICall()
         if not type(calldef) is str:calldef=calldef.__name__
         directive=['setexitdef',"","",calldef,self.currentModName]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def closeEventCallback(self,calldef):
-        self.startAPICall()
         if not type(calldef) is str:calldef=calldef.__name__
         directive=['closeeventcallback',"","","","",self.currentModName,calldef]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def cancelSignal(self):
-        self.startAPICall()
         directive=['cancelsignal']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
-    #add a signal to a widget and send the directives to the client side to be executed
-    #so that any simple thing that the client can do will be done there instead of talking
-    #to the server to do simple tasks
     def addClientSignal(self,buttonWidget,signal,directive,threaded="threaded",actionDef="",*defArgs):
+        """
+        add a signal to a widget and send the directives to the client side to be executed
+        so that any simple thing that the client can do will be done there instead of talking
+        to the server to do simple tasks
+        """
         self.startAPICall()
         self.addingClientSignal=True
         if type(buttonWidget) != str:buttonWidget = buttonWidget.name
@@ -774,7 +692,6 @@ class spool(object):
         if type(actionDef)   != str:actionDef    = actionDef.__name__
         if type(stdOutDef)   != str:stdOutDef    = stdOutDef.__name__
         self.addressWidget(processName,"PROCESS")
-        self.updateWidgets(processName,"PROCESS")
         directive=['addprocess',processName,program,arguments,modal,asoftware,actionDef,self.spoolID,self.currentModName,stdOutDef]
         if self.addingClientSignal:
             self.clientBuffer.append(directive)
@@ -786,239 +703,107 @@ class spool(object):
         self.stopAPICall()
 
     def setTalkBox(self,talkboxWidget):
-        self.startAPICall()
-        #self.tracelog.subscribeWidget(talkboxWidget)
         if not type(talkboxWidget) is str:talkboxWidget=talkboxWidget.name
         directive=['talkbox',talkboxWidget]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def setWindowFocusDef(self, actionDef):
-        self.startAPICall()
         if type(actionDef) != str:actionDef=actionDef.__name__
         directive=['setwindowfocusdef',actionDef,self.currentModName]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def hasClipboardText(self):
         self.startAPICall()
         directive=['hasclipboardtext',self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
         
     def enableRestore(self,abool):
-        self.startAPICall()
         directive=['enablerestore',abool]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #add a signal to a widget that will trigger a process that was created
     def addProcessSignal(self,widget,signal,calldef,threadtype="threaded"):
-        self.startAPICall()
         if not type(widget) is str:widget=widget.name
         if not type(calldef) is str:calldef=calldef.name
         directive=['signal',widget,signal,calldef,self.currentModName,threadtype]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #resize the currently active window
     def resizeWindow(self,width,height):
-        self.startAPICall()
         directive=['mainresize',str(width),str(height)]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     #listen to all keystrokes typed into a specific widget also define the
     #key that will stop the listening and the function to run server side
     #when listening is done
     def keyListen(self,valueSet,listenWidgets,typeValueActions,actionDef):
-        self.startAPICall()
         if type(valueSet)  != str:valueSet=valueSet.name
         if type(actionDef) != str:actionDef=actionDef.__name__
         directive=['keylisten',valueSet,self.currentModName,listenWidgets,typeValueActions,actionDef]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #get a global that is stored on the client side
     def getGlobal(self,value):
         self.startAPICall()
         directive=['getglobal',value,self.spoolID,"VALUE"]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     def getWindowTitle(self):
         self.startAPICall()
         directive=['getwindowtitle',self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     def setWindowTitle(self,text):
-        self.startAPICall()
         directive=['setwindowtitle',self.spoolID,text]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def setWindowSize(self,width,height):
-        self.startAPICall()
         directive=['setwindowsize',self.spoolID,str(width),"",str(height)]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
-    #return data from a dialog box
-    def returnData(self,*args):
-        self.startAPICall()
-        directive=['returndata',self.uiSpoolID,args]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-
-    #set a global that is stored on the client side
+    #set a global that is stored on the client side and server side
     def setGlobal(self,value,text):
-        self.startAPICall()
         directive=['setglobal',value,self.spoolID,"VALUE",text]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         setattr(self,value,text)
 
     #fill up the client clipboard with some data
     def loadClipboard(self,text):
-        self.startAPICall()
         directive=['loadclipboard',text,self.spoolID,"TEXT"]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def storeState(self,widget,whattostore,default=""):
-        self.startAPICall()
         if type(widget) != str:awidget=widget.name
         else:awidget="NONE"
         if type(widget) != str:atype=widget.type
         else:atype="NONE"
         directive=['storestate',awidget,self.spoolID,atype,whattostore.upper(),default]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #show a message box on the client screen
     def messageBox(self,title,message="",blocking=True,name=""):
-        self.startAPICall()
         if message=="":message=title;title="pop"
         self.cache.delete(self.spoolID+"receive"+self.threadID)
-        if blocking:
-            thedir="messagebox"
-        #else:
-        #    thedir="messageboxnr"
-        #    self.addressWidget(name,"MESSAGEBOX")
+        if blocking:thedir="messagebox"
         directive=[thedir,title,self.spoolID,message,name]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while blocking:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     #show a message box on the client screen
     def colorDialog(self,title):
         self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["colordialog",title,self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     def getResolution(self):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["getresolution","",self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
         
     def getPrinterList(self):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["getprinterlist","",self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     def storedata(self,key,value):
         self.startAPICall()
@@ -1048,15 +833,7 @@ class spool(object):
     def makeSocketObject(self,objectName,hostname="",port=0):
         self.startAPICall()
         directive=['makesocketobject',objectName,hostname,port]
-        self.addressWidget(objectName,"TCPSOCKET")
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,objectName,"TCPSOCKET")
 
     def http_request(self,hostname,request_data,urlAddon="",datatype="plain",ssl=False,username="",password=""):
         self.httpError = ""
@@ -1172,156 +949,41 @@ class spool(object):
 
     #show a boolean box (OK / Cancel) with a question and get True or False return
     def booleanBox(self,title,message,okButtonText="Ok",cancelButtonText="Cancel"):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
-        thedir="booleanbox"
-        directive=[thedir,title,self.spoolID,message,okButtonText,cancelButtonText]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        directive=["booleanbox",title,self.spoolID,message,okButtonText,cancelButtonText]+['blockingCall']
+        return self.passDirective(directive)
 
     def runStripe(self,publickey):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["runstripe",publickey,self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        currdata=""
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.05)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
 
     #show an input box that expects entry on a line edit as a return value
     def inputBox(self,title,form):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["inputbox",title,self.spoolID,form]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
-
+        return self.passDirective(directive)
 
     #show a file search dialog box on the client side for the client to
     #choose a file and path to be sent back
     def fileDialog(self,title,startpath,lookForDir=False):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
-        directive=["filedialog",title,self.spoolID,startpath,lookForDir]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
+        directive=["filedialog",title,self.spoolID,startpath,lookForDir]+["blockingCall"]
+        return self.passDirective(directive)
 
-    def clientFileExists(self,filename):
-        self.startAPICall()
-        self.cache.delete(self.spoolID+"receive"+self.threadID)
-        directive=["clientfileexists",filename,self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return currdata
-        
     def focusWidget(self):
         self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["focuswidget",'',self.spoolID]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        if self.__dict__.has_key(currdata):currdata=self.__dict__[currdata]
-        return currdata
+        return self.passDirective(directive)
         
     def setFocusVal(self,value,thetype="FOCUS"):
-        self.startAPICall()
         directive=['setvalue','',str(self.spoolID),thetype,value]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def getFocusVal(self,value,thetype="FOCUS"):
-        self.startAPICall()
         directive=['getfocusval',self.spoolID,thetype]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+        return self.passDirective(directive)
         
     #create a UI file on the server side if one does not exists
     def createDialogUI(self,filename):
@@ -1362,30 +1024,22 @@ class spool(object):
         
     #android function        
     def homeHook(self,funcName):
-        self.startAPICall()
         directive=['homehook',funcName,'',self.currentModName]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     #android function        
     def menuHook(self,funcName):
-        self.startAPICall()
         directive=['menuhook',funcName,'',self.currentModName]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     #android and possibly other mobile devices function
     def showKeyboard(self):
-        self.startAPICall()
         directive=['showkeyboard']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def askForClose(self):
-        self.startAPICall()
         directive=['askforclose']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #create a module file on the server is one does not exists
     def createWebModFile(self,filename):
@@ -1398,248 +1052,60 @@ class spool(object):
     #create quickbooks object
     def createQBObject(self,widgetName,filepath):
         self.startAPICall()
-        self.addressWidget(widgetName,"QBOBJECT")
         directive=['createqbobject',widgetName,self.spoolID,filepath]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.1)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.stopAPICall()
-        return
+        return self.passDirective(directive,widgetName,"QBOBJECT")
 
     #show a dialog box and if the dialog ui does not exist for this dialog create it
     #and if the mod does not exist for this dialog create it as well.
     #Then display the dialog client side and make it the main screen
     def dialogBox(self,dialog,title,width=0,height=0,actionDef="",widgetUI="",software=""):
-        self.startAPICall()
-        #self.flushBuffer()
         if software=="":software=self.software
         if type(actionDef) != str:actionDef=actionDef.__name__
         if type(widgetUI)  != str:widgetUI=widgetUI.name
         dialog=dialog.upper()
         try:
             uifile = glob.glob('obj' + software + sep + dialog.upper() + '.ui')
-            if len(uifile)==0:
-                self.createDialogUI('obj' + software + sep + dialog.upper() + '.ui')
             module = glob.glob('obj' + software + sep + "mod_" + dialog.upper() + '.p*')
-            if len(module)==0:
-                self.createModFile('obj' + software + sep + "mod_" + dialog.upper() + '.py',"mod")
         except:
             pass
         self.cache.delete(self.spoolID+"receive"+self.threadID)
-        self.addressWidget(dialog.lower(),"DIALOGBOX")
         directive=["dialogbox",title,self.spoolID,dialog,width,height,self.currentModName,actionDef,widgetUI,software]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,dialog.lower(),"DIALOGBOX")
         
     def softwareDialog(self,software,title,actionDef="",width=0,height=0):
         self.assignWidgetUI(software+"module",software,software)
         self.dialogBox(software,title,width,height,actionDef,software+"module",software)
 
-    def doImport(self, name, globals=None, locals=None, fromlist=None):
-        self.startAPICall()
-        try:
-            self.stopAPICall()
-            return sys.modules[name]
-        except KeyError:
-            pass
-            
-        fp, pathname, description = imp.find_module(name)
-    
-        try:
-            self.stopAPICall()
-            return imp.load_module(name, fp, pathname, description)
-        finally:
-            if fp:
-                fp.close()
-        self.stopAPICall()
-
     def getSoftwareModule(self,moduleName):
-        self.startAPICall()
         plugin = ziptestweb.loadPaceModule(self.software,moduleName,"0123456789abcdef")
         self.stopAPICall()
         return plugin
 
     def assignWidgetUI(self,widgetName,uiClass,uiSoftware=""):
-        self.startAPICall()
         self.addressWidget(widgetName,"CUSTOMWIDGET")
         directive=["assignwidgetui",self.spoolID,uiClass,self.currentModName,widgetName,uiSoftware]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-
-    def assignWebWidget(self,widgetName):
-        self.startAPICall()
-        self.addressWidget(widgetName,"WEBVIEW")
-        directive=["assignwebwidget",self.spoolID,'',self.currentModName,widgetName]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-        
-    def startCEF(self):
-        self.startAPICall()
-        directive=["initcef",self.spoolID,'',self.currentModName]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,widgetName,"CUSTOMWIDGET")
 
     def startCustomEventListener(self):
-        self.startAPICall()
         directive=["startcustomeventlistener",self.spoolID,'',self.currentModName]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-        
-    def stopCEF(self):
-        self.startAPICall()
-        directive=["stopcef",self.spoolID,'',self.currentModName]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def assignScribbleWidget(self,widgetName,addToWidget):
-        self.startAPICall()
-        self.addressWidget(widgetName,"SCRIBBLEWIDGET")
         directive=["assignscribblewidget",self.spoolID,'',self.currentModName,widgetName,addToWidget.name]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,widgetName,"SCRIBBLEWIDGET")
         
     def assignCameraWidget(self,widgetName,addToWidget):
-        self.startAPICall()
         self.addressWidget(widgetName,"CAMERAWIDGET")
         directive=["assigncamerawidget",self.spoolID,'',self.currentModName,widgetName,addToWidget.name]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,widgetName,"CAMERAWIDGET")
 
-    def assignAxWidget(self,widgetName,controlID):
-        self.startAPICall()
-        self.addressWidget(widgetName,"AXWIDGET")
-        directive=["assignaxwidget",self.spoolID,'',self.currentModName,widgetName,controlID]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-
-    def loadModule(self,modulename,onFinishActionDef="",uiWidget="",exitImmediately=False,modFileType="mod"):
-        #self.flushBuffer()
-        self.startAPICall()
-        if type(onFinishActionDef) != str:onFinishActionDef=onFinishActionDef.__name__
-        moduleArgs=""
-        if type(uiWidget) != str:
-            if uiWidget.__dict__.has_key("moduleArgs"):
-                moduleArgs = uiWidget.moduleArgs
-            uiWidget=uiWidget.name
-            
-        directive=["loadmodule",modulename,onFinishActionDef,self.spoolID,self.currentModName,uiWidget,exitImmediately,moduleArgs]
-        module = glob.glob('obj' + self.software + sep + "mod_" + modulename.upper() + '.p*')
-        if len(module)==0:
-            self.createModFile('obj' + self.software + sep + "mod_" + modulename.upper() + '.py',modFileType)
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        if not exitImmediately:
-            self.autoDone=True
-        self.stopAPICall()
-        
-    #must have assigned a ui widget to use reload module
-    def reLoadModule(self,modulename,uiWidget,modFileType="mod",onFinishActionDef=""):
-        #self.flushBuffer()
-        self.startAPICall()
-        if type(onFinishActionDef) != str:onFinishActionDef=onFinishActionDef.__name__
-        if type(uiWidget) != str:uiWidget=uiWidget.name
-        directive=["reloadmodule",modulename,onFinishActionDef,self.spoolID,self.currentModName,uiWidget,False]
-        module = glob.glob('obj' + self.software + sep + "mod_" + modulename.upper() + '.p*')
-        if len(module)==0:
-            self.createModFile('obj' + self.software + sep + "mod_" + modulename.upper() + '.py',modFileType)
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.autoDone=True
-        self.stopAPICall()
-        
-    def writeFile(self,afile,data):
-        self.startAPICall()
-        directive=['writefile','',data,afile]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
-        
     def exitModule(self,moduleToExit=""):
         #self.flushBuffer()
         self.startAPICall()
         directive=["exitmodule",moduleToExit]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
+        self.passDirective(directive)
         if moduleToExit=="":
             self.autoDone=True
-        self.stopAPICall()
     
     def getTraceback(self):
         self.startAPICall()
@@ -1661,9 +1127,6 @@ class spool(object):
             self.createModFile('obj' + software + sep + "mod_" + software + '.py',modFileType)
             if web:self.createWebModFile('obj' + software + sep + "mod_web_" + software.lower() + '.py')
         self.stopAPICall()
-        #self.cache.delete(self.spoolID+"receive"+self.threadID)
-        #directive=["dialogbox",title,self.spoolID,dialog,width,height,self.currentModName,actionDef]
-        #self.cache.append(self.spoolID+"send"+self.threadID,directive)
 
     def createModule(self,software,modulename,dialog=False,modFileType="mod"):
         self.startAPICall()
@@ -1682,47 +1145,23 @@ class spool(object):
         self.stopAPICall()
 
     def setWindowIconFromWidget(self,widget,window):
-        self.startAPICall()
         if type(widget) != str:widget=widget.name
         directive=['setwindowiconfromwidget',widget,window]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
     
     def setWindowIconFromResource(self,pngfile,window):
         self.startAPICall()
         directive=['setwindowiconfromresource',pngfile,window]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def centerWindow(self):
-        self.startAPICall()
         directive=['centerwindow']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     def raiseScreen(self):
         self.startAPICall()
         directive=['raisescreen',self.spoolID]
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
     #send an error to be displayed client side console (for dev)
     def error(self,errorTrace):
@@ -1744,60 +1183,23 @@ class spool(object):
         self.cache.append(self.spoolID+"send"+self.threadID,directive)
         self.stopAPICall()
     
-    def tellySavalas(self,data):
-        self.tellcli(data)
-        
-    def baldy(self,data):
-        self.tellcli(data)
-
     def createShortcut(self,objname,shortcut,widget=""):
-        self.startAPICall()
-        self.addressWidget(objname,"KEYACCEL")
         directive=["createshortcut",objname,shortcut,widget]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive,objname,"KEYACCEL")
 
     #an internal function to be used to finish a list of directives to the client
     #so that the client knows to stop looking
     def done(self):
-        self.startAPICall()
         directive=["done"]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
     
     def flushBuffer(self):
-        self.startAPICall()
         directive=['signalflush',self.valueBuffer]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
+        return self.passDirective(directive)
 
     def doEvents(self):
-        self.startAPICall()
         directive=['signalflush',self.valueBuffer]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
+        return self.passDirective(directive)
 
     def inBuffer(self,name):
         self.startAPICall()
@@ -1826,9 +1228,7 @@ class spool(object):
             valExtraListFill=True
         for arg in args:
             try:
-                if not arg.parentWidget is None:addname = arg.getAddName()
-                else:addname=""
-                valList.append(addname+arg.name)
+                valList.append(arg.getAddName()+arg.name)
                 #if self.inBuffer(arg.name):self.flushBuffer()
                 typeList.append(arg.type)
                 if valTypeListFill:valTypeList.append("")
@@ -1839,19 +1239,7 @@ class spool(object):
                 if valTypeListFill:valTypeList.append("")
                 if valExtraListFill:valExtraList.append("")
         directive=["getvaluelist",valList,self.spoolID,typeList,valTypeList,valExtraList]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            time.sleep(0.1)
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.acnt:
-                currdata=False
-                break
-            acnt+=1
-        currcnt=0
+        currdata = self.passDirective(directive)
         if type(currdata) is str:currdata=currdata.split(",")
         if not type(currdata) is bool:
             for arg in args:
@@ -1862,7 +1250,6 @@ class spool(object):
         else:
             for arg in args:
                 arg.value=""
-        self.stopAPICall()
         return currdata
     
     def decode_base64(self,data):
@@ -1872,7 +1259,6 @@ class spool(object):
         return base64.decodestring(data)
 
     def setValueList(self,*args):
-        self.startAPICall()
         switch=0
         items=[]
         values=[]
@@ -1886,75 +1272,30 @@ class spool(object):
                 values.append(arg)
                 switch=0
         directive=["setvaluelist",items,self.spoolID,types,values]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive+["HINT:"+self.moduleUN])
-        self.stopAPICall()
+        self.passDirective(directive)
         
                     
     #tells the client to end itself (goodbye)
     def exitProgram(self):
-        #self.flushBuffer()
-        self.startAPICall()
         directive=['exitprogram']
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def startSpinner(self):
-        self.startAPICall()
         directive=['startspinner',"mainwindow"]
-        self.passCall(directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         self.flushBuffer()
 
     def stopSpinner(self):
-        self.startAPICall()
         directive=['stopspinner',"mainwindow"]
-        self.passCall(directive)
-        self.stopAPICall()
+        self.passDirective(directive)
 
-    def printStart(self,printerName,formData,invoiceXML,printFlags=""):
-        self.startAPICall()
-        directive=['printstart','mainwindow',self.spoolID,printerName,formData,invoiceXML,printFlags]+['blockingCall']
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        currdata = self.getMain(999)
-        self.stopAPICall()
-        return currdata
-
-    def printStartOLD(self,printerName,formData,invoiceXML):
-        self.startAPICall()
-        directive=['printstart',"mainwindow",printerName,formData,invoiceXML]+['blockingCall']
-        self.passCall(directive)
-        acnt=0
-        while True:
-            currdata=self.cache.get(self.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.cache.delete(self.spoolID+"receive"+self.threadID)
-               break
-        self.stopAPICall()
-        return currdata
+    def printStart(self,printerName,formData,formXML,printFlags=""):
+        directive=['printstart','mainwindow',self.spoolID,printerName,formData,formXML,printFlags]+['blockingCall']
+        return self.passDirective(directive,None,None,999)
 
     def exitWindow(self):
-        #self.flushBuffer()
-        self.startAPICall()
         directive=['exitwindow']
-        if self.addingClientSignal:
-            self.clientBuffer.append(directive)
-            self.stopAPICall()
-            return
-        else:
-            self.clientBuffer=[directive]
-        self.cache.append(self.spoolID+"send"+self.threadID,directive)
-        self.stopAPICall()
+        self.passDirective(directive)
         
     def closeHint(self):
         self.startAPICall()
@@ -1965,20 +1306,11 @@ class spool(object):
             except:
                 pass
         self.stopAPICall()
-        #self.flushBuffer()
 
     def delAll(self,*args):
         self.startAPICall()
-        try:
-            self.dbconn.close()
-        except:
-            pass
-        if self.__dict__.has_key("cbConn"):
-            self.cbConn.closeAll()
-            #self.cbConn.close()
         self.cache.clearUID(self.uiSpoolID)
         self.stopAPICall()
-    
 
     def getFieldClassInfo(self,gridClass,fields,keys,sortinfo):
         self.startAPICall()
@@ -2012,14 +1344,6 @@ class spool(object):
                         retSel+=akey
                         
                 
-                #gs=agridclass.getSelect("byOne",
-                #                     "columntype,source",
-                #                     "",
-                #                     "classname="+agridclass.repstr +" and " + \
-                #                     "columnname="+agridclass.repstr,
-                #                     "",
-                #                     (gridClass,akey))
-                #self.tellcli("get select:",gs)
                 agridclass.recDat=[]
                 agridclass.acur = agridclass.find({"$and":[{"classname":gridClass},{"columnname":akey}]})
                 if agridclass.acur.count()>0:agridclass.recDat=[agridclass.acur[0]['columntype'],agridclass.acur[0]['source']]
@@ -2132,7 +1456,6 @@ class spool(object):
                             
         self.stopAPICall()
         return retDat
-            
 
     def getFieldClassList(self,gridClass):
         self.startAPICall()
@@ -2151,7 +1474,6 @@ class spool(object):
         else:
             self.stopAPICall()
             return []
-            
             
     def cacheTable(self,tableName,tableKey=""):
         if self.cache.gpdbconn.root.has_key(tableName):
@@ -2242,9 +1564,7 @@ class Widget(object):
         if "returnvals" in kwargs:
             for aretval in kwargs['returnvals']:
                 try:
-                    if not aretval.parentWidget is None:addname = aretval.getAddName()
-                    else:addname=""
-                    retvals+=addname+aretval.name+"(*)"+aretval.type+"[&]"
+                    retvals+=aretval.getAddName()+aretval.name+"(*)"+aretval.type+"[&]"
                 except Exception as e:
                     print(e)
                     retvals+=str(aretval)+"(*)GLOBAL[&]"
@@ -2276,6 +1596,7 @@ class Widget(object):
 
     def getAddName(self):
         retname = ""
+        if self.parentWidget=="":return ""
         onObj = self.parentWidget
         if not onObj is None:
             while True:
@@ -2305,21 +1626,24 @@ class Widget(object):
                     break
         return rettype
 
-    def close(self,*args):
+    def passDirective(self,directive,addWidgetName=None,addWidgetType=None,addWidgetToParent=True,returnTimeout=15):
         self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['close',addname+self.name,str(self.parent.spoolID),self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        if self.type=="DIALOG":
-            self.parent.cacheUnSet(self.name)
+        self.parent.passCall(directive)
+        if not addWidgetName is None:
+            if addWidgetToParent:
+                self.parent.addressWidget(addWidgetName,addWidgetType)
+            else:
+                self.doAddAddress(addWidgetName,addWidgetType)
         self.parent.stopAPICall()
+        if directive[-1]=="blockingCall":
+            return self.parent.getMain(returnTimeout)
+        else:
+            return None
+
+    def close(self,*args):
+        directive=['close',self.getAddName()+self.name,str(self.parent.spoolID),self.type]
+        self.passDirective(directive)
+        if self.type=="DIALOG":self.parent.cacheUnSet(self.name)
 
     def toJulian(self,theDate=None):
         foxStart= datetime.strptime("01/01/1980","%m/%d/%Y")
@@ -2348,812 +1672,206 @@ class Widget(object):
 
     def show(self,widgetname=""):
         self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if not self.name+"hse" in self.parent.__dict__:
-            directive=['show',addname+self.name,self.parent.spoolID,self.type,widgetname]
+            directive=['show',self.getAddName()+self.name,self.parent.spoolID,self.type,widgetname]
         else:
-            directive=['show',addname+self.parent.__dict__[self.name+'hse'],self.parent.spoolID,"HTMLELEMENT",widgetname]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+            directive=['show',self.getAddName()+self.parent.__dict__[self.name+'hse'],self.parent.spoolID,"HTMLELEMENT",widgetname]
+        self.passDirective(directive)
     
     def showKeyboard(self,keyflag=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['showkeyboardwidget',addname+self.name,self.parent.spoolID,self.type,keyflag]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['showkeyboardwidget',self.getAddName()+self.name,self.parent.spoolID,self.type,keyflag]
+        self.passDirective(directive)
 
     def expandAll(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['expandall',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['expandall',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def collapseAll(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['collapseall',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['collapseall',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def stopTimer(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['stoptimer',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['stoptimer',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
     
     def setSpacing(self,spacing):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setspacing',addname+self.name,self.parent.spoolID,self.type,spacing]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setspacing',self.getAddName()+self.name,self.parent.spoolID,self.type,spacing]
+        self.passDirective(directive)
 
     def setMargin(self,margin):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setmargin',addname+self.name,self.parent.spoolID,self.type,margin]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setmargin',self.getAddName()+self.name,self.parent.spoolID,self.type,margin]
+        self.passDirective(directive)
 
     def startTimer(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['starttimer',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['starttimer',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def startStopWatch(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['startstopwatch',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['startstopwatch',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def stopStopWatch(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['stopstopwatch',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['stopstopwatch',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def getStopWatchSeconds(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getstopwatchseconds',addname+self.name,self.parent.spoolID]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getstopwatchseconds',self.getAddName()+self.name,self.parent.spoolID]+['blockingCall']
+        return self.passDirective(directive)
 
     def setInterval(self,interval=10):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setinterval',addname+self.name,self.parent.spoolID,self.type,interval]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setinterval',self.getAddName()+self.name,self.parent.spoolID,self.type,interval]
+        self.passDirective(directive)
 
     def assignLayout(self,widgetAssign):
-        self.parent.startAPICall()
         if type(widgetAssign) != str:widgetAssign=widgetAssign.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["assignlayout",self.parent.spoolID,widgetAssign,self.parent.currentModName,addname+self.name]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=["assignlayout",self.parent.spoolID,widgetAssign,self.parent.currentModName,self.getAddName()+self.name]
+        self.passDirective(directive)
         
-    def setWebLayout(self,widgetAssign,startURL="www.google.com"):
-        self.parent.startAPICall()
+    def setWebLayout(self,widgetAssign,startURL=""):
         if type(widgetAssign) != str:widgetAssign=widgetAssign.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["setweblayout",self.parent.spoolID,widgetAssign,self.parent.currentModName,addname+self.name,startURL]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def addDesigner(self,aname,changeCallDef=""):
-        self.parent.startAPICall()
-        if not type(changeCallDef) is str:changeCallDef=changeCallDef.__name__
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["adddesigner",self.parent.spoolID,addname+self.name,self.parent.currentModName,aname,changeCallDef]
-        self.parent.addressWidget(aname,"DESIGNER")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-        
-    def addTableView(self,aname):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["addtableview",self.parent.spoolID,addname+self.name,self.parent.currentModName,aname]
-        self.parent.addressWidget(aname,"TABLE")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def loadFile(self,filename,desWidgetName,software):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["loadfile",self.parent.spoolID,addname+self.name,self.parent.currentModName,filename,desWidgetName,software]
-        self.parent.addressWidget(desWidgetName,"SUBWINDOW")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def saveFile(self,filename):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["savefile",self.parent.spoolID,addname+self.name,self.parent.currentModName,filename,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def saveImage(self,filename,filetype):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["saveimage",self.parent.spoolID,addname+self.name,self.parent.currentModName,filename,self.type,filetype]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def clearImage(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["clearimage",self.parent.spoolID,addname+self.name,self.parent.currentModName,"",self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=["setweblayout",self.parent.spoolID,widgetAssign,self.parent.currentModName,self.getAddName()+self.name,startURL]
+        self.passDirective(directive)
 
     def hideTitleBar(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['hidetitlebar',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def setFloating(self,abool):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setfloating',addname+self.name,self.parent.spoolID,self.type,abool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['hidetitlebar',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     #set the top headers for a table
     def setTableHeaders(self,headers,headerFilters=[],secondaryHeader=[],footer=[]):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableheaders',addname+self.name,headers,self.type,headerFilters,secondaryHeader,footer]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableheaders',self.getAddName()+self.name,headers,self.type,headerFilters,secondaryHeader,footer]
+        self.passDirective(directive)
 
     def updateFooter(self,footer):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['updatefooter',addname+self.name,footer,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['updatefooter',self.getAddName()+self.name,footer,self.type]
+        self.passDirective(directive)
 
     def setFilterValue(self,column,value):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setfiltervalue',addname+self.name,"",self.type,column,value]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setfiltervalue',self.getAddName()+self.name,"",self.type,column,value]
+        self.passDirective(directive)
     
     #set the top headers for a table
     def setSelectMode(self,selmode):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setselectmode',addname+self.name,selmode,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setselectmode',self.getAddName()+self.name,selmode,self.type]
+        self.passDirective(directive)
     
     def setTableAlignments(self,alignments):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablealignments',addname+self.name,alignments,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablealignments',self.getAddName()+self.name,alignments,self.type]
+        self.passDirective(directive)
 
     def setTableRowNoSelect(self,row):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablerownoselect',addname+self.name,self.type,row]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablerownoselect',self.getAddName()+self.name,self.type,row]
+        self.passDirective(directive)
 
     def setTableRowStyles(self,rowid,bgcolor,rowstyle="",celloptions=[]):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablerowstyles',addname+self.name,self.type,rowid,bgcolor,rowstyle,celloptions]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablerowstyles',self.getAddName()+self.name,self.type,rowid,bgcolor,rowstyle,celloptions]
+        self.passDirective(directive)
         
     def keySort(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['keysort',addname+self.name,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['keysort',self.getAddName()+self.name,self.type]
+        self.passDirective(directive)
     
     def setDragDropEnabled(self,abool=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         enabled="true"
         if not abool:enabled="false"
-        directive=['setdragdropenabled',addname+self.name,self.type,enabled]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setdragdropenabled',self.getAddName()+self.name,self.type,enabled]
+        self.passDirective(directive)
 
     def setMultilineEnabled(self,abool=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         enabled="true"
         if not abool:enabled="false"
-        directive=['setmultilineenabled',addname+self.name,self.type,enabled]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setmultilineenabled',self.getAddName()+self.name,self.type,enabled]
+        self.passDirective(directive)
 
     def setColumnMoveEnabled(self,abool=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         enabled="true"
         if not abool:enabled="false"
-        directive=['setcolumnmoveenabled',addname+self.name,self.type,enabled]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcolumnmoveenabled',self.getAddName()+self.name,self.type,enabled]
+        self.passDirective(directive)
     
-    def assignModelWidget(self,actionWidget,selectionModel=False):
-        self.parent.startAPICall()
-        self.parent.addressWidget(actionWidget,"TABLEMODEL")
-        self.parent.updateWidgets(actionWidget,"TABLEMODEL")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['assignmodelwidget',actionWidget,"",addname+self.name,self.parent.spoolID,self.type,selectionModel]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
     def setToolTip(self,tipinfo):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settooltip',addname+self.name,tipinfo,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settooltip',self.getAddName()+self.name,tipinfo,self.type]
+        self.passDirective(directive)
 
     def setTableWidths(self,widths):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablewidths',addname+self.name,widths,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablewidths',self.getAddName()+self.name,widths,self.type]
+        self.passDirective(directive)
 
     def setTableFontStyle(self,fontstyle):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablefontstyle',addname+self.name,fontstyle,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablefontstyle',self.getAddName()+self.name,fontstyle,self.type]
+        self.passDirective(directive)
 
     def setFontSize(self,fontsize="12px"):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(fontsize) is int or type(fontsize) is float:fontsize=str(fontsize)+"px"
-        directive=['setfontsize',addname+self.name,fontsize,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setfontsize',self.getAddName()+self.name,fontsize,self.type]
+        self.passDirective(directive)
 
     def setTableColTypes(self,types):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecoltypes',addname+self.name,types,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecoltypes',self.getAddName()+self.name,types,self.type]
+        self.passDirective(directive)
         
     def setTableResizes(self,resizes):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settableresizes',addname+self.name,resizes,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settableresizes',self.getAddName()+self.name,resizes,self.type]
+        self.passDirective(directive)
         
     #fill a table one by one
     def fillTableOne(self,rowkey,data,position=0):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableaddone',addname+self.name,data,position,self.type,rowkey]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableaddone',self.getAddName()+self.name,data,position,self.type,rowkey]
+        self.passDirective(directive)
         
     def addRow(self,data,position=0):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableaddone',addname+self.name,data,position,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableaddone',self.getAddName()+self.name,data,position,self.type]
+        self.passDirective(directive)
         
     def tableSortColumn(self,columnnum,AscOrDesc="asc"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tablesortcolumn',addname+self.name,columnnum,0,AscOrDesc]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tablesortcolumn',self.getAddName()+self.name,columnnum,0,AscOrDesc]
+        self.passDirective(directive)
         
     def setColorStart(self,keyColStart,dataColStart):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcolorstart',addname+self.name,keyColStart,0,dataColStart]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcolorstart',self.getAddName()+self.name,keyColStart,0,dataColStart]
+        self.passDirective(directive)
         
     def acceptDrop(self,acceptBool):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['acceptdrop',addname+self.name,acceptBool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['acceptdrop',self.getAddName()+self.name,acceptBool]
+        self.passDirective(directive)
         
     def setDefaultBackgroundColor(self,color):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setdefaultbackgroundcolor',addname+self.name,color]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setdefaultbackgroundcolor',self.getAddName()+self.name,color]
+        self.passDirective(directive)
     
     #add a row to a table using the key to replace a key that may already be there
     def addKey(self,data,keypos=None):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableaddkey',addname+self.name,data,self.type,keypos]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableaddkey',self.getAddName()+self.name,data,self.type,keypos]
+        self.passDirective(directive)
 
     def deleteRow(self,row):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['deleterow',addname+self.name,row,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['deleterow',self.getAddName()+self.name,row,self.type]
+        self.passDirective(directive)
 
     def deleteRowKey(self,rowKey,keypos=None):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['deleterowkey',addname+self.name,rowKey,self.type,keypos]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['deleterowkey',self.getAddName()+self.name,rowKey,self.type,keypos]
+        self.passDirective(directive)
         
     def selectRow(self,rowindex):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['selectrows',addname+self.name,rowindex,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['selectrows',self.getAddName()+self.name,rowindex,self.type]
+        self.passDirective(directive)
    
     def setCheckedColumn(self,colIndex,value=1):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcheckedcolumn',addname+self.name,colIndex,self.type,value]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
+        directive=['setcheckedcolumn',self.getAddName()+self.name,colIndex,self.type,value]
+        self.passDirective(directive)
 
     def selectRowKey(self,rowindex):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['selectrowkeys',addname+self.name,rowindex,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['selectrowkeys',self.getAddName()+self.name,rowindex,self.type]
+        self.passDirective(directive)
 
     def getWord(self):
-        self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["getword",addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.parent.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.parent.stopAPICall()
-        return currdata
+        directive=["getword",self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        return self.passDirective(directive)
     
     def signalFlush(self):
-        self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=["signalflush",addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            time.sleep(0.15)
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-            if acnt==self.parent.acnt:
-                currdata=False
-                break
-            acnt+=1
-        self.parent.stopAPICall()
-        return currdata
+        directive=["signalflush",self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        return self.passDirective(directive)
 
     def buildTableData(self,data,headers,widths=[],types=[],alignments=[],sorttypes=[]):
         self.parent.startAPICall()
@@ -3177,484 +1895,154 @@ class Widget(object):
 
     #fill the table with all the data to be displayed
     def fillTableMany(self,data,rowtoselect=-1):
-        self.parent.startAPICall()
         dataid=str(uuid.uuid1()).lstrip("{").rstrip("}").replace("-","")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tablefill',addname+self.name,dataid,self.type,rowtoselect]
+        directive=['tablefill',self.getAddName()+self.name,dataid,self.type,rowtoselect]
         self.storedata(dataid,data)
-        self.parent.passCall(directive)
-        #if self.parent.addingClientSignal:
-        #    self.parent.clientBuffer.append(directive)
-        #    self.parent.stopAPICall()
-        #    return
-        #else:
-        #    self.parent.clientBuffer=[directive]
-        #self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        self.passDirective(directive)
 
     def schedulerFill(self,scheddata):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['schedulerfill',addname+self.name,scheddata,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['schedulerfill',self.getAddName()+self.name,scheddata,self.type]
+        self.passDirective(directive)
 
     def fillTableMany2(self,data):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         dataid=str(uuid.uuid1()).lstrip("{").rstrip("}").replace("-","")
-        directive=['tablefill2',addname+self.name,dataid,self.type]
+        directive=['tablefill2',self.getAddName()+self.name,dataid,self.type]
         self.storedata(dataid,data)
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        self.passDirective(directive)
 
     def clearTable(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableclear',addname+self.name,'',self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableclear',self.getAddName()+self.name,'',self.type]
+        self.passDirective(directive)
         
     def initTable(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tableinit',addname+self.name,'',self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tableinit',self.getAddName()+self.name,'',self.type]
+        self.passDirective(directive)
 
     def setTableDelegate(self,column,atype,colData=[],callDef="",params=[]):
-        self.parent.startAPICall()
         if not type(callDef) is str:callDef=callDef.__name__
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settabledelegate',addname+self.name,self.type,column,atype,colData,self.parent.currentModName,callDef,params]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settabledelegate',self.getAddName()+self.name,self.type,column,atype,colData,self.parent.currentModName,callDef,params]
+        self.passDirective(directive)
         
     def resetTableDelegates(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['resettabledelegates',addname+self.name,self.type,self.parent.currentModName]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['resettabledelegates',self.getAddName()+self.name,self.type,self.parent.currentModName]
+        self.passDirective(directive)
 
     def setTableColumnIcon(self,column,resource,iconfile):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecolumnicon',addname+self.name,self.type,column,resource,iconfile]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    def addGridButtons(self,buttonList,actionDef):
-        for button in buttonList:  #[0]=Name [1]=Text [2]=IconResource [3]=IconSize [4]=Row [5]=Column
-            self.parent.addressWidget(button[0],"BUTTON")
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridbuttons',addname+self.name,self.type,"",buttonList]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-        for button in buttonList:
-            self.parent.addSignal(self.parent.__dict__[button[0]],  "clicked(sendername)",  actionDef)
+        directive=['settablecolumnicon',self.getAddName()+self.name,self.type,column,resource,iconfile]
+        self.passDirective(directive)
 
     def setHideIcon(self,row,column,abool=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['sethideicon',addname+self.name,self.type,row,column,abool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['sethideicon',self.getAddName()+self.name,self.type,row,column,abool]
+        self.passDirective(directive)
 
     def setSortingEnabled(self,abool):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setsortingenabled',addname+self.name,self.type,abool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setsortingenabled',self.getAddName()+self.name,self.type,abool]
+        self.passDirective(directive)
 
     def setTableColumnEditable(self,column):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecolumneditable',addname+self.name,self.type,column]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecolumneditable',self.getAddName()+self.name,self.type,column]
+        self.passDirective(directive)
         
     def setTableCellDisabled(self,row,column):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecelldisabled',addname+self.name,self.type,row,column]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecelldisabled',self.getAddName()+self.name,self.type,row,column]
+        self.passDirective(directive)
         
     def setWordWrap(self,abool):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setwordwrap',addname+self.name,self.type,abool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setwordwrap',self.getAddName()+self.name,self.type,abool]
+        self.passDirective(directive)
 
     def setTableCellValue(self,rowKey,column,value):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(value) is str:
             pass
         elif type(value) is int or type(value) is float:
             pass
         else:
             value = json.dumps(value)
-        directive=['settablecellvalue',addname+self.name,self.type,rowKey,column,value]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-
-        self.parent.cache.append(self.parent.spoolID+"send"+self.parent.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecellvalue',self.getAddName()+self.name,self.type,rowKey,column,value]
+        self.passDirective(directive)
 
     def setTableRowKey(self,rowKey,newKey):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablerowkey',addname+self.name,self.type,rowKey,newKey]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.parent.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablerowkey',self.getAddName()+self.name,self.type,rowKey,newKey]
+        self.passDirective(directive)
 
     def setTableCellType(self,rowKey,column,atype,startval=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecelltype',addname+self.name,self.type,rowKey,column,atype,startval]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-
-        self.parent.cache.append(self.parent.spoolID+"send"+self.parent.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecelltype',self.getAddName()+self.name,self.type,rowKey,column,atype,startval]
+        self.passDirective(directive)
 
     def setTableCellEnabled(self,row,column):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablecellenabled',addname+self.name,self.type,row,column]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablecellenabled',self.getAddName()+self.name,self.type,row,column]
+        self.passDirective(directive)
 
     def setCellContents(self,row,column,data):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcellcontents',addname+self.name,self.type,row,column,data]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcellcontents',self.getAddName()+self.name,self.type,row,column,data]
+        self.passDirective(directive)
 
     def setSelectRows(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setselectrows',addname+self.name,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setselectrows',self.getAddName()+self.name,self.type]
+        self.passDirective(directive)
 
     def setSelectCells(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setselectcells',addname+self.name,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setselectcells',self.getAddName()+self.name,self.type]
+        self.passDirective(directive)
 
     def setTableBGColorRule(self,keyItem,equalTo,color,columns,priority=0):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablebgcolorrule',addname+self.name,keyItem,equalTo,color,columns,priority]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablebgcolorrule',self.getAddName()+self.name,keyItem,equalTo,color,columns,priority]
+        self.passDirective(directive)
 
     def setTableNSRule(self,keyItem,equalTo,exceptionList=[]):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablensrule',addname+self.name,keyItem,equalTo,exceptionList]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablensrule',self.getAddName()+self.name,keyItem,equalTo,exceptionList]
+        self.passDirective(directive)
 
     def setTableFGColorRule(self,keyItem,equalTo,color,columns,priority=0):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settablefgcolorrule',addname+self.name,keyItem,equalTo,color,columns,priority]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settablefgcolorrule',self.getAddName()+self.name,keyItem,equalTo,color,columns,priority]
+        self.passDirective(directive)
 
     #hide a column in a table
     def hideColumns(self,colList):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['hidecolumns',addname+self.name,colList]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['hidecolumns',self.getAddName()+self.name,colList]
+        self.passDirective(directive)
 
     def hide(self,widgetname=""):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if not self.name+"hse" in self.parent.__dict__:
-            directive=['hide',addname+self.name,"",self.type,widgetname]
+            directive=['hide',self.getAddName()+self.name,"",self.type,widgetname]
         else:
-            directive=['hide',addname+self.parent.__dict__[self.name+'hse'],"","HTMLELEMENT",widgetname]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive+["HINT:"+self.parent.moduleUN])
-        self.parent.stopAPICall()
+            directive=['hide',self.getAddName()+self.parent.__dict__[self.name+'hse'],"","HTMLELEMENT",widgetname]
+        self.passDirective(directive)
 
     #hide a grid header
     def hideHeader(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['hideheader',addname+self.name]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['hideheader',self.getAddName()+self.name]
+        self.passDirective(directive)
 
     def hideAll(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['hideall',addname+self.name,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['hideall',self.getAddName()+self.name,self.type]
+        self.passDirective(directive)
 
     def write(self,data):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['write',addname+self.name,self.type,data]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['write',self.getAddName()+self.name,self.type,data]
+        self.passDirective(directive)
 
     def writeToSocket(self,data):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['writetosocket',addname+self.name,self.type,data]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['writetosocket',self.getAddName()+self.name,self.type,data]
+        self.passDirective(directive)
 
     def readFromSocket(self):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.flushBuffer()
-        self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['readfromsocket',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['readfromsocket',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     #add a python code editor screen to the current widget
     def addFormattedEdit(self,filename,onChangeActionDef="",onSelectChangeActionDef="",onMarginClickActionDef="",codeType="PYTHON"):
-        self.parent.startAPICall()
         if type(onChangeActionDef) != str:onChangeActionDef=onChangeActionDef.__name__
         if type(onSelectChangeActionDef) != str:onSelectChangeActionDef=onSelectChangeActionDef.__name__
         if type(onMarginClickActionDef) != str:onMarginClickActionDef=onMarginClickActionDef.__name__
-        #sender = self.getSender()
         data=open(self.parent.cache.realpath+filename,"r").read()
         import base64
         data = base64.b64encode(data)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addpythoncodeedit',addname+self.name,self.parent.spoolID,self.type,filename,data,onChangeActionDef,self.parent.currentModName,onSelectChangeActionDef,codeType,onMarginClickActionDef]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addpythoncodeedit',self.getAddName()+self.name,self.parent.spoolID,self.type,filename,data,onChangeActionDef,self.parent.currentModName,onSelectChangeActionDef,codeType,onMarginClickActionDef]
+        self.passDirective(directive)
 
     def addFormattedWebEdit(self,widgetname,filename,onChangeActionDef="",onSelectChangeActionDef="",onMarginClickActionDef="",codeType="PYTHON",filedata=""):
-        self.parent.startAPICall()
-        self.parent.addressWidget(widgetname,"CODEEDIT")
         if type(onChangeActionDef) != str:onChangeActionDef=onChangeActionDef.__name__
         if type(onSelectChangeActionDef) != str:onSelectChangeActionDef=onSelectChangeActionDef.__name__
         if type(onMarginClickActionDef) != str:onMarginClickActionDef=onMarginClickActionDef.__name__
@@ -3665,574 +2053,131 @@ class Widget(object):
             data=filedata
         import base64
         data = base64.b64encode(data)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addpythoncodeedit',addname+self.name,self.parent.spoolID,self.type,filename,data,onChangeActionDef,self.parent.currentModName,onSelectChangeActionDef,codeType,onMarginClickActionDef,widgetname]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addpythoncodeedit',self.getAddName()+self.name,self.parent.spoolID,self.type,filename,data,onChangeActionDef,self.parent.currentModName,onSelectChangeActionDef,codeType,onMarginClickActionDef,widgetname]
+        self.passDirective(directive,widgetname,"CODEEDIT")
 
     def disconnectListener(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['disconnectlistener',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['disconnectlistener',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def reconnectListener(self,index=-1):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['reconnectlistener',addname+self.name,self.parent.spoolID,self.type,index]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['reconnectlistener',self.getAddName()+self.name,self.parent.spoolID,self.type,index]
+        self.passDirective(directive)
 
-    #add a program to a widget
-    def addProgram(self,filename,windowname,createname,somename="mprog"):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        self.parent.addressWidget(somename,"PROGRAM")
-        self.parent.updateWidgets(somename,"PROGRAM")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addprogram',addname+self.name,self.parent.spoolID,self.type,filename,windowname,createname,somename]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    #add a program to a widget
+    #add a balloon to a widget
     def showBalloon(self,text):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['showballoon',addname+self.name,self.parent.spoolID,self.type,text]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['showballoon',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
 
     #raise widget
     def raiseWidget(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['raise',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['raise',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def exportXLS(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['exportxls',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['exportxls',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def exportPDF(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['exportpdf',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['exportpdf',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
     
 
     #get a value from the current widget
     def getVal(self,valtype="",extra="",wait=10000):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.parent.flushBuffer()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
         self.parent.cache.set(self.parent.spoolID+"receiveloading",None)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getvalue',addname+self.name,self.parent.spoolID,self.type,valtype,extra]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            if self.parent.cache.get(self.parent.spoolID+"receiveloading")==False:
-                currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-                acnt+=1
-                time.sleep(.01)
-                if acnt==self.parent.acnt:
-                    currdata=""
-                    break
-                if currdata!=[]:
-                   self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-                   break
-            elif self.parent.cache.get(self.parent.spoolID+"receiveloading")==True:
-                time.sleep(0.1)
-            else:
-                time.sleep(0.1)
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getvalue',self.getAddName()+self.name,self.parent.spoolID,self.type,valtype,extra]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     def setAsTime(self,timeFormat="%H:%i"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setastime',addname+self.name,self.parent.spoolID,self.type,timeFormat]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setastime',self.getAddName()+self.name,self.parent.spoolID,self.type,timeFormat]
+        self.passDirective(directive)
         
-    def openQBConnection(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['openqbconnection',addname+self.name,self.parent.spoolID]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-        
-    def closeQBConnection(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['closeqbconnection',addname+self.name,self.parent.spoolID]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-        
-    def setQBVariable(self,varname,varvalue):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setqbvariable',addname+self.name,self.parent.spoolID,varname,varvalue]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-        
-    def qbQueryItem(self,thetype,thexml):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['qbqueryitem',addname+self.name,self.parent.spoolID,thetype,thexml]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-        
-    def qbAddItem(self,thetype,thexml):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['qbadditem',addname+self.name,self.parent.spoolID,thetype,thexml]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-        
-    def qbModItem(self,thetype,thexml):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['qbmoditem',addname+self.name,self.parent.spoolID,thetype,thexml]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-        
-    def qbDelListItem(self,thetype,theid):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['qbdellistitem',addname+self.name,self.parent.spoolID,thetype,theid]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-        
-    def qbDelTxn(self,thetype,theid):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['qbdeltxn',addname+self.name,self.parent.spoolID,thetype,theid]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-
     def getTableData(self):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.flushBuffer()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['gettabledata',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['gettabledata',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     def getSelectedKey(self):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.flushBuffer()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getselectedkey',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getselectedkey',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
         
     def getTableHeaderInfo(self):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.flushBuffer()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['gettableheaderinfo',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['gettableheaderinfo',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     def setRowHeight(self,theheight):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setrowheight',addname+self.name,self.type,theheight]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setrowheight',self.getAddName()+self.name,self.type,theheight]
+        self.passDirective(directive)
         
     def setRowHeightToContents(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setrowheighttocontents',addname+self.name,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setrowheighttocontents',self.getAddName()+self.name,self.type]
+        self.passDirective(directive)
 
     def setColumnWidgetRules(self,tableColumn,*args):
-        self.parent.startAPICall()
         sendList=[]
         for data in args:
             sendList.append(data.getRuleData())
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcolumnwidgetrules',addname+self.name,self.type,tableColumn, sendList]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcolumnwidgetrules',self.getAddName()+self.name,self.type,tableColumn, sendList]
+        self.passDirective(directive)
 
     def setColumnWidth(self,thecolumn,thewidth):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcolumnwidth',addname+self.name,self.type,thecolumn,thewidth]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcolumnwidth',self.getAddName()+self.name,self.type,thecolumn,thewidth]
+        self.passDirective(directive)
 
     def setColumnsResizeable(self,thecolumn):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcolumnsresizeable',addname+self.name,self.type,thecolumn]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcolumnsresizeable',self.getAddName()+self.name,self.type,thecolumn]
+        self.passDirective(directive)
 
     def getCodeFileLock(self):
-        self.parent.startAPICall()
-        #if self.parent.inBuffer(self.name):self.flushBuffer()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getcodefilelock',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.value=currdata
-        self.parent.stopAPICall()
-        return currdata
-
+        directive=['getcodefilelock',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
+    
     def setMask(self,mask):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        directive=['setmask',addname+self.name,self.parent.spoolID,self.type,mask]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setmask',self.getAddName()+self.name,self.parent.spoolID,self.type,mask]
+        self.passDirective(directive)
 
     #get a value from a widget after validating its contents to match what you want
     #the content type to be
     def getValidate(self,TypeConst,Required=False,valtype=""):
-        self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getvalue',addname+self.name,self.parent.spoolID,self.type,valtype,TypeConst,Required]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        if currdata=="VALIDATION ERROR":
-            currdata=None
-            self.isValid=False
-        self.value = currdata
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getvalue',self.getAddName()+self.name,self.parent.spoolID,self.type,valtype,TypeConst,Required]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     #get the index from the current widget
     def getIndex(self):
-        self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getindex',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getindex',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
         
     def getIndexCount(self):
-        self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getindexcount',addname+self.name,self.parent.spoolID,self.type]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        directive=['getindexcount',self.getAddName()+self.name,self.parent.spoolID,self.type]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
         
     #set the value of the current widget
     def setVal(self,text,immediate=True,valType=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if self.type=="CODEEDIT":
             import base64
             text = base64.b64encode(text)
         else:
             text = str(text)
         self.value = text
-        directive=['setvalue',addname+self.name,str(self.parent.spoolID),self.type,text,valType]
-        self.parent.passCall(directive,immediate)
-        self.parent.stopAPICall()
+        directive=['setvalue',self.getAddName()+self.name,str(self.parent.spoolID),self.type,text,valType]
+        self.passDirective(directive)
 
     def initWidget(self):
         #subclass me
@@ -4268,18 +2213,8 @@ class Widget(object):
                 wpaddname = windowParent.getAddName() +  windowParent.name
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
-        directive=['createwindow',addname+self.name,self.parent.spoolID,self.type,windowname,width,height,datatype,data,modal,title,maximize,wpaddname]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
+        directive=['createwindow',self.getAddName()+self.name,self.parent.spoolID,self.type,windowname,width,height,datatype,data,modal,title,maximize,wpaddname]+['blockingCall']
+        currdata = self.passDirective(directive)
         if widgetLib!="":
             awidget.widgetLib = widgetLib
             awidget.initParams(kwargs) 
@@ -4302,61 +2237,27 @@ class Widget(object):
         else:
             adict = {}
         return adict
-        #self.parent.getRemoteWidgets(windowname,awidget)
-
  
     def setActionGlobal(self,text,immediate=False):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setactionglobal',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setactionglobal',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
     
     #set the value of the current widget
     def setURL(self,text,calldef=""):
-        self.parent.startAPICall()
         if not type(calldef) is str:calldef=calldef.__name__
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['seturl',addname+self.name,self.parent.spoolID,self.type,text,calldef]
-        self.parent.passCall(directive,True,"blockingCall")
-        currdata = self.parent.getMain(15)
-        self.parent.stopAPICall()
-        return currdata
+        directive=['seturl',self.getAddName()+self.name,self.parent.spoolID,self.type,text,calldef]+["blockingCall"]
+        self.value = self.passDirective(directive)
+        return self.value
 
     #set the value of the current widget
     def setAJAX(self,function):
-        self.parent.startAPICall()
-        #sender = self.getSender()
         awidget = self.parent.__dict__[self.name]
         wpaddname=""
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
-        directive=['setajax',addname+self.name,self.parent.spoolID,self.type,function,wpaddname]+['blockingCall']
+        directive=['setajax',self.getAddName()+self.name,self.parent.spoolID,self.type,function,wpaddname]+['blockingCall']
         self.value=function
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
+        currdata = self.passDirective(directive)
         if currdata!="":
             try:
                 adict = json.loads(currdata)
@@ -4375,585 +2276,182 @@ class Widget(object):
 
     #set the value of the current widget
     def addAlliance(self,sellerid,buyerid,partnerid,vinnumber,catalogid,indexid,indexcount):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addalliance',addname+self.name,self.parent.spoolID,self.type,sellerid,buyerid,partnerid,vinnumber,catalogid,indexid,str(indexcount)]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        directive=['addalliance',self.getAddName()+self.name,self.parent.spoolID,self.type,sellerid,buyerid,partnerid,vinnumber,catalogid,indexid,str(indexcount)]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     def addStackedWidget(self,widgetName,indexQty,activeIndex=0,cell=""):
         immediate=True
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         for d in range(0,indexQty):
             self.doAddAddress(widgetName+str(d),"LAYOUT")
             self.doAddAddress(widgetName+"Div"+str(d),"HTMLELEMENT")
-            #self.parent.addressWidget(widgetName+str(d),"LAYOUT")
-            #self.parent.addressWidget(widgetName+"Div"+str(d),"HTMLELEMENT")
             self.parent.__dict__[widgetName+str(d)+"hse"] = widgetName+"Div"+str(d)  #internally used only during hide / show
-        #self.parent.addressWidget(widgetName,"STACKEDWIDGET")
         self.doAddAddress(widgetName,"STACKEDWIDGET")
-        directive=['addstackedwidget',addname+self.name,self.parent.spoolID,self.type,indexQty,activeIndex,widgetName,cell]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addstackedwidget',self.getAddName()+self.name,self.parent.spoolID,self.type,indexQty,activeIndex,widgetName,cell]
+        self.passDirective(directive,widgetName,"STACKEDWIDGET",False)
              
     def checkAvailabilityAlliance(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['checkavailabilityalliance',addname+self.name,"",self.parent.spoolID]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        directive=['checkavailabilityalliance',self.getAddName()+self.name,"",self.parent.spoolID]+['blockingCall']
+        self.value = self.passDirective(directive)
+        return self.value
 
     def placeOrderAlliance(self,deliveryMethod,orderMessage,purchaseOrderNumber):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['placeorderalliance',addname+self.name,"",self.parent.spoolID,deliveryMethod,orderMessage,purchaseOrderNumber]+['blockingCall']
+        directive=['placeorderalliance',self.getAddName()+self.name,"",self.parent.spoolID,deliveryMethod,orderMessage,purchaseOrderNumber]+['blockingCall']
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        self.value = self.passDirective(directive)
+        return self.value
  
     #set the value of the current widget
     def setCursorPosition(self,line,index,immediate=False):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcursorposition',addname+self.name,self.parent.spoolID,self.type,line,index]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcursorposition',self.getAddName()+self.name,self.parent.spoolID,self.type,line,index]
+        self.passDirective(directive)
 
     def setFocusCallback(self,InOrOut,theDef):
-        self.parent.startAPICall()
         if not type(theDef) is str:theDef=theDef.__name__
         InOrOut=InOrOut.upper()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['focuseventcall',addname+self.name,self.parent.spoolID,self.type,InOrOut,self.parent.currentModName,theDef]
-        self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
+        directive=['focuseventcall',self.getAddName()+self.name,self.parent.spoolID,self.type,InOrOut,self.parent.currentModName,theDef]
+        self.passDirective(directive)
         
     def delegateFocusEventCallback(self,InOrOut,theDef):
-        self.parent.startAPICall()
         if not type(theDef) is str:theDef=theDef.__name__
         InOrOut=InOrOut.upper()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['delegatefocuseventcall',addname+self.name,self.parent.spoolID,self.type,InOrOut,self.parent.currentModName,theDef]
-        self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
+        directive=['delegatefocuseventcall',self.getAddName()+self.name,self.parent.spoolID,self.type,InOrOut,self.parent.currentModName,theDef]
+        self.passDirective(directive)
 
     def annotateLine(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['annotateline',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['annotateline',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def append(self,text,immediate=True):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['append',addname+self.name,self.parent.spoolID,self.type,text]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['append',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
 
     def setLength(self,text):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setlength',addname+self.name,self.parent.spoolID,self.type,text]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setlength',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
     
     #set the current widget to a client side global
     def setToGlobal(self,text):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settoglobal',addname+self.name,self.parent.spoolID,self.type,text]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settoglobal',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
 
     def putToGlobal(self,text):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['puttoglobal',addname+self.name,self.parent.spoolID,self.type,text]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['puttoglobal',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
 
     #set the current widget to a specific index
     def setIndex(self,index,widgetname=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setindex',addname+self.name,self.parent.spoolID,self.type,index,widgetname]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['setindex',self.getAddName()+self.name,self.parent.spoolID,self.type,index,widgetname]
+        self.passDirective(directive)
 
     def closeCurrentEdit(self):
-        self.parent.startAPICall()
-        #sender = self.getSender(5)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['closeedit',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['closeedit',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def removeTab(self,whichtab):
-        self.parent.startAPICall()
-        #sender = self.getSender(5)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['removetab',addname+self.name,self.parent.spoolID,self.type,whichtab]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['removetab',self.getAddName()+self.name,self.parent.spoolID,self.type,whichtab]
+        self.passDirective(directive)
 
     def cut(self):
-        self.parent.startAPICall()
-        #sender = self.getSender(5)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['cut',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['cut',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def showFind(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['showfind',addname+self.name,self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['showfind',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     def copy(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['copy',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['copy',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     def paste(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['paste',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['paste',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def undo(self,keyOnText=""):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['undo',addname+self.name,self.parent.spoolID,self.type,keyOnText]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['undo',self.getAddName()+self.name,self.parent.spoolID,self.type,keyOnText]
+        self.passDirective(directive)
 
     def redo(self,keyOnText=""):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['redo',addname+self.name,self.parent.spoolID,self.type,keyOnText]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['redo',self.getAddName()+self.name,self.parent.spoolID,self.type,keyOnText]
+        self.passDirective(directive)
   
     def insert(self,thetext):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['insert',addname+self.name,self.parent.spoolID,self.type,thetext]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['insert',self.getAddName()+self.name,self.parent.spoolID,self.type,thetext]
+        self.passDirective(directive)
 
     def setTabChanged(self,index):
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settabchanged',addname+self.name,index]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settabchanged',self.getAddName()+self.name,index]
+        self.passDirective(directive)
         
     def setTabText(self,thetext):
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settabtext',addname+self.name,'',self.type,thetext]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settabtext',self.getAddName()+self.name,'',self.type,thetext]
+        self.passDirective(directive)
 
     def tabCloseHook(self,calldef,retGlobal):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['tabclosehook',addname+self.name,"",calldef.__name__,retGlobal]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['tabclosehook',self.getAddName()+self.name,"",calldef.__name__,retGlobal]
+        self.passDirective(directive)
 
     def replace(self,text,findLineEdit):
-        self.parent.startAPICall()
         if type(findLineEdit) != str:findLineEdit=findLineEdit.name
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['replace',addname+self.name,self.parent.spoolID,self.type,text,findLineEdit]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['replace',self.getAddName()+self.name,self.parent.spoolID,self.type,text,findLineEdit]
+        self.passDirective(directive)
     
     def setCompleterData(self,dataList):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcompleterdata',addname+self.name,self.parent.spoolID,self.type,dataList]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setcompleterdata',self.getAddName()+self.name,self.parent.spoolID,self.type,dataList]
+        self.passDirective(directive)
     
     def findFirst(self,text):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['findfirst',addname+self.name,self.parent.spoolID,self.type,text]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['findfirst',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
         
     def updateText(self,text):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['updatetext',addname+self.name,self.parent.spoolID,self.type,text]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['updatetext',self.getAddName()+self.name,self.parent.spoolID,self.type,text]
+        self.passDirective(directive)
     
     def findNext(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['findnext',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['findnext',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
     
     def setTabSaved(self,index):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settabsaved',addname+self.name,index]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settabsaved',self.getAddName()+self.name,index]
+        self.passDirective(directive)
 
     def setTabUnlocked(self,index,switch=True):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['settabunlocked',addname+self.name,index,switch]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settabunlocked',self.getAddName()+self.name,index,switch]
+        self.passDirective(directive)
 
     def setAllSaved(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setallsaved',addname+self.name]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setallsaved',self.getAddName()+self.name]
+        self.passDirective(directive)
     
     def getTabChanged(self,index):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['gettabchanged',addname+self.name,index,self.parent.spoolID]+['blockingCall']
+        directive=['gettabchanged',self.getAddName()+self.name,index,self.parent.spoolID]+['blockingCall']
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        self.value = self.passDirective(directive)
+        return self.value
 
     def getAllUnsaved(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getallunsaved',addname+self.name,self.parent.spoolID]+['blockingCall']
+        directive=['getallunsaved',self.getAddName()+self.name,self.parent.spoolID]+['blockingCall']
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:
-                currdata=""
-                break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        self.value = self.passDirective(directive)
+        return self.value
 
     #bump the index of the current widget by X amount
     def moveIndex(self,index):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['moveindex',addname+self.name,self.parent.spoolID,self.type,index]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['moveindex',self.getAddName()+self.name,self.parent.spoolID,self.type,index]
+        self.passDirective(directive)
         
     #clear the focus from the current widget to the main widget
     def clearFocus(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['clearfocus',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['clearfocus',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     #set the focus to the current widget
     def setFocus(self,widget=""):
-        self.parent.startAPICall()
         if type(widget) != str:widget=widget.name
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setfocus',addname+self.name,self.parent.spoolID,self.type,widget]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.stopAPICall()
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
+        directive=['setfocus',self.getAddName()+self.name,self.parent.spoolID,self.type,widget]
+        self.passDirective(directive)
 
     #internal function used to get the md5 hash value of a local file
     def md5_for_local_file(self,afile):
@@ -4982,7 +2480,7 @@ class Widget(object):
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
-        directive=['getmd5',addname+self.name,self.parent.spoolID,self.type,afile]+['blockingCall']
+        directive=['getmd5',self.getAddName()+self.name,self.parent.spoolID,self.type,afile]+['blockingCall']
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
         acnt=0
         while True:
@@ -4996,38 +2494,14 @@ class Widget(object):
         self.parent.stopAPICall()
         return currdata
         
-    
-    def base64_for_remote_file(self,afile):
-        self.parent.startAPICall()
-        self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['getbase64',addname+self.name,self.parent.spoolID,self.type,afile]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
-
     #send a file from the server to the client 
     def sendFile(self,afile):
-        self.parent.startAPICall()
         dataid=str(uuid.uuid1()).lstrip("{").rstrip("}").replace("-","")
         totalBytes = os.path.getsize(afile)
         data = open(afile,'rb').read(totalBytes)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['sendfile',addname+self.name,dataid,afile]
+        directive=['sendfile',self.getAddName()+self.name,dataid,afile]
         self.storedata(dataid,data)
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        self.passDirective(directive)
 
     #set the image pixmap of the current widget
     def setPixMap(self,imageFile,stretch=True):
@@ -5038,137 +2512,35 @@ class Widget(object):
             self.sendFile("images"+sep+imageFile)
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
-        directive=['setpixmap',addname+self.name,self.parent.spoolID,self.type,"images"+sep+imageFile]
+        directive=['setpixmap',self.getAddName()+self.name,self.parent.spoolID,self.type,"images"+sep+imageFile]
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
         self.parent.stopAPICall()
 
     #set the image icon of the current widget
     def setIcon(self,resource,iconfile):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['seticon',addname+self.name,self.parent.spoolID,self.type,resource,iconfile]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    #add a menu action to the current widget
-    def addAction(self,actionWidget,actionText,pngName=""):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not type(actionText) is list:actionText=[actionText]
-        if type(actionWidget) != list and type(actionWidget)!=str:actionWidget=[actionWidget.__name__]
-        elif type(actionWidget) != list:actionWidget=[actionWidget]
-        if type(pngName) != list:pngName=[pngName]
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        nwlist = []
-        for anaction in actionWidget:
-            if type(anaction) != str:anaction=anaction.__name__
-            nwlist.append(anaction)
-            self.parent.addressWidget(anaction,"ACTION")
-            self.parent.updateWidgets(anaction,"ACTION")
-        actionWidget = nwlist
-            
-        directive=['addaction',actionWidget,actionText,addname+self.name,self.parent.spoolID,self.type,pngName]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-        
-    #add a menu action to the current widget
-    def addEmptyCellAction(self,actionWidget,actionText):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not type(actionText) is list:actionText=[actionText]
-        if type(actionWidget) != list and type(actionWidget)!=str:actionWidget=[actionWidget.__name__]
-        elif type(actionWidget) != list:actionWidget=[actionWidget]
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        nwlist = []
-        for anaction in actionWidget:
-            if type(anaction) != str:anaction=anaction.__name__
-            nwlist.append(anaction)
-            self.parent.addressWidget(anaction,"ACTION")
-            self.parent.updateWidgets(anaction,"ACTION")
-        actionWidget = nwlist
-            
-        directive=['addemptycellaction',actionWidget,actionText,addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-
-    #add a menu action to the current widget
-    def addFilledCellAction(self,actionWidget,actionText):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not type(actionText) is list:actionText=[actionText]
-        if type(actionWidget) != list and type(actionWidget)!=str:actionWidget=[actionWidget.__name__]
-        elif type(actionWidget) != list:actionWidget=[actionWidget]
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        nwlist = []
-        for anaction in actionWidget:
-            if type(anaction) != str:anaction=anaction.__name__
-            nwlist.append(anaction)
-            self.parent.addressWidget(anaction,"ACTION")
-            self.parent.updateWidgets(anaction,"ACTION")
-        actionWidget = nwlist
-        
-        directive=['addfilledcellaction',actionWidget,actionText,addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['seticon',self.getAddName()+self.name,self.parent.spoolID,self.type,resource,iconfile]
+        self.passDirective(directive)
 
     #set the context menu allowed columns
     def setContextMenuColumns(self,columnList):
-        self.parent.startAPICall()
         if not type(columnList) is list:columnList=[columnList]
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcontextmenucolumns',addname+self.name,columnList,"",self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['setcontextmenucolumns',self.getAddName()+self.name,columnList,"",self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     def disableDragDropColumns(self,columnList):
-        self.parent.startAPICall()
         if not type(columnList) is list:columnList=[columnList]
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['disabledragdropcolumns',addname+self.name,columnList,"",self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['disabledragdropcolumns',self.getAddName()+self.name,columnList,"",self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def addHideRowRange(self,rangeStart,rangeEnd):
-        self.parent.startAPICall()
         rowRange = range(rangeStart,rangeEnd)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addhiderowrange',addname+self.name,rowRange,"",self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addhiderowrange',self.getAddName()+self.name,rowRange,"",self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     #add a menu stretch to the current toolbar
     def addStretch(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addstretch',addname+self.name,"",self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addstretch',self.getAddName()+self.name,"",self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def doAddAddress(self,widget,widgetType):
         if self.type=="DIALOG":
@@ -5180,14 +2552,9 @@ class Widget(object):
 
     #add a menu stretch to the current toolbar
     def addLayout(self,layoutWidget,pattern,cell="a"):
-        self.parent.startAPICall()
         if type(layoutWidget) != str:layoutWidget = layoutWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addlayout',addname+self.name,layoutWidget,self.type,cell,pattern]
-        self.parent.passCall(directive)
-        self.doAddAddress(layoutWidget,"LAYOUT")
-        self.parent.stopAPICall()
+        directive=['addlayout',self.getAddName()+self.name,layoutWidget,self.type,cell,pattern]
+        self.passDirective(directive,layoutWidget,"LAYOUT",False)
 
     def getItemNames(self,item):
         retItems = []
@@ -5231,8 +2598,6 @@ class Widget(object):
     def addForm(self,formWidget,formdata,cell="a"):
         self.parent.startAPICall()
         if type(formWidget) != str:formWidget = formWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         retformdata = []
         for item in formdata:
             if "type" in item:
@@ -5241,10 +2606,8 @@ class Widget(object):
                     item['list']=self.getItemNames(item['list'])
                 item=self.getItemNames(item)
             retformdata.append(item)
-        directive=['addform',addname+self.name,formWidget,self.type,cell,retformdata]
-        self.parent.passCall(directive)
-        self.doAddAddress(formWidget,"FORM")
-        self.parent.stopAPICall()
+        directive=['addform',self.getAddName()+self.name,formWidget,self.type,cell,retformdata]
+        self.passDirective(directive,formWidget,"FORM",False)
         try:
             self.parentWidget.__dict__[formWidget].binding = self.binding
         except:
@@ -5295,36 +2658,20 @@ class Widget(object):
         saveCallbackFunction("save",changeDict)
 
     def startSpinner(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['startspinner',addname+self.name]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['startspinner',self.getAddName()+self.name]
+        self.passDirective(directive)
 
     def stopSpinner(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['stopspinner',addname+self.name]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['stopspinner',self.getAddName()+self.name]
+        self.passDirective(directive)
 
     def addCalendar(self,calWidget,cell="a"):
-        self.parent.startAPICall()
         if type(calWidget) != str:calWidget = calWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addcalendar',addname+self.name,calWidget,self.type,cell]
-        self.parent.passCall(directive)
-        self.doAddAddress(calWidget,"CALENDAR")
-        self.parent.stopAPICall()
+        directive=['addcalendar',self.getAddName()+self.name,calWidget,self.type,cell]
+        self.passDirective(directive,calWidget,"CALENDAR",False)
 
     def addScheduler(self,calWidget,sections,units,datestart,cell="a"):
-        self.parent.startAPICall()
         if type(calWidget) != str:calWidget = calWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         addhtml = ""
         px = 10
         for item in units:
@@ -5343,833 +2690,246 @@ class Widget(object):
         </div>
         """ % {"addhtml":addhtml}
         schedHTML = schedHTML.replace("pct","%")
-        directive=['addscheduler',addname+self.name,calWidget,self.type,cell,sections,units,datestart,schedHTML]
-        self.parent.passCall(directive)
-        self.doAddAddress(calWidget,"SCHEDULER")
-        self.parent.stopAPICall()
+        directive=['addscheduler',self.getAddName()+self.name,calWidget,self.type,cell,sections,units,datestart,schedHTML]
+        self.passDirective(directive,calWidget,"SCHEDULER",False)
 
     def highlightHour(self,hrtext,uid):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['highlighthour',addname+self.name,hrtext,uid]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['highlighthour',self.getAddName()+self.name,hrtext,uid]
+        self.passDirective(directive)
 
     def addTabBar(self,tabWidget,cell="a"):
-        self.parent.startAPICall()
         if type(tabWidget) != str:tabWidget = tabWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addtabbar',addname+self.name,tabWidget,self.type,cell]
-        self.parent.passCall(directive)
-        self.doAddAddress(tabWidget,"TABSHEET")
-        self.parent.stopAPICall()
+        directive=['addtabbar',self.getAddName()+self.name,tabWidget,self.type,cell]
+        self.passDirective(directive,tabWidget,"TABSHEET",False)
 
     def addTimeBox(self,htmlWidgetName,cell="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addtimebox',addname+self.name,htmlWidgetName,self.type,cell]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addtimebox',self.getAddName()+self.name,htmlWidgetName,self.type,cell]
+        self.passDirective(directive)
 
     def addHTML(self,htmlString,cell="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addhtml',addname+self.name,htmlString,self.type,cell]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addhtml',self.getAddName()+self.name,htmlString,self.type,cell]
+        self.passDirective(directive)
 
     def addGridLayout(self,layoutWidget,rows,columns,cell="a"):
-        self.parent.startAPICall()
         if type(layoutWidget) != str:layoutWidget = layoutWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridlayout',addname+self.name,layoutWidget,self.type,cell,rows,columns]
-        self.parent.passCall(directive)
-        self.doAddAddress(layoutWidget,"GRIDLAYOUT")
-        self.parent.stopAPICall()
+        directive=['addgridlayout',self.getAddName()+self.name,layoutWidget,self.type,cell,rows,columns]
+        self.passDirective(directive,layoutWidget,"GRIDLAYOUT",False)
 
     def addToolbar(self,toolBarWidget,iconsize=32,alignment="left",layoutcell="a"):
-        self.parent.startAPICall()
         if type(toolBarWidget) != str:toolBarWidget = toolBarWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #self.parent.addressWidget(toolBarWidget,"TOOLBAR")
-        self.doAddAddress(toolBarWidget,"TOOLBAR")
-        directive=['addtoolbar',addname+self.name,toolBarWidget,self.type,iconsize,alignment,layoutcell]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addtoolbar',self.getAddName()+self.name,toolBarWidget,self.type,iconsize,alignment,layoutcell]
+        self.passDirective(directive,toolBarWidget,"TOOLBAR",False)
 
     def addUploader(self,uploaderWidget,layoutcell="a"):
-        self.parent.startAPICall()
         if type(uploaderWidget) != str:uploaderWidget = uploaderWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #self.parent.addressWidget(toolBarWidget,"TOOLBAR")
-        self.doAddAddress(uploaderWidget,"TOOLBAR")
-        directive=['adduploader',addname+self.name,uploaderWidget,self.type,layoutcell]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['adduploader',self.getAddName()+self.name,uploaderWidget,self.type,layoutcell]
+        self.passDirective(directive,uploaderWidget,"TOOLBAR",False)
 
     def click(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['click',addname+self.name,"",self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['click',self.getAddName()+self.name,"",self.type]
+        self.passDirective(directive)
 
     def addMenu(self,menuWidget,layoutcell="a"):
-        self.parent.startAPICall()
         if type(menuWidget) != str:menuWidget = menuWidget.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #self.parent.addressWidget(menuWidget,"MENU")
-        self.doAddAddress(menuWidget,"MENU")
-        directive=['addmenu',addname+self.name,menuWidget,self.type,layoutcell]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addmenu',self.getAddName()+self.name,menuWidget,self.type,layoutcell]
+        self.passDirective(directive,menuWidget,"MENU",False)
 
     def addButton(self,buttonName,buttonText,icon,isDropdown=False,buttonParent=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addbutton',addname+self.name,buttonName,self.type,buttonText,icon,isDropdown,buttonParent]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addbutton',self.getAddName()+self.name,buttonName,self.type,buttonText,icon,isDropdown,buttonParent]
+        self.passDirective(directive)
 
     def addInput(self,inputName,inputValue,inputWidth,readOnly=False,style=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addinput',addname+self.name,inputName,self.type,inputValue,inputWidth,readOnly,style]
-        self.doAddAddress(inputName,"TEXTBOX")
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addinput',self.getAddName()+self.name,inputName,self.type,inputValue,inputWidth,readOnly,style]
+        self.passDirective(directive,inputName,"TEXTBOX",False)
    
     def addText(self,text,fontsize=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addtext',addname+self.name,"",self.type,text,fontsize]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addtext',self.getAddName()+self.name,"",self.type,text,fontsize]
+        self.passDirective(directive)
 
     def addMenuItem(self,itemParent,itemName,itemText,icon,isDropdown=False):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addmenuitem',addname+self.name,itemParent,self.type,itemName,itemText,icon]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addmenuitem',self.getAddName()+self.name,itemParent,self.type,itemName,itemText,icon]
+        self.passDirective(directive)
         
     #add a menu seperator to the current toolbar
     def addSeperator(self,sepID):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addseperator',addname+self.name,self.parent.spoolID,self.type,sepID]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['addseperator',self.getAddName()+self.name,self.parent.spoolID,self.type,sepID]
+        self.passDirective(directive)
 
     #set the subframe to use in a web widget
     def setSubFrameTitle(self,theTitle):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setsubframetitle',addname+self.name,theTitle,"",self.parent.spoolID,self.type]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
+        directive=['setsubframetitle',self.getAddName()+self.name,theTitle,"",self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
-    #set the subframe to use in a web widget
-    def subFrameExec(self,thescript):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['subframeexec',addname+self.name,thescript,"",self.parent.spoolID,self.type]+['blockingCall']
-        #self.parent.passCall(directive)
-        self.parent.passCall(directive,True,"blockingCall")
-        currdata = self.parent.getMain(15)
-        self.parent.stopAPICall()
-        return currdata
-        
-    #add a handled web widget
-    def addHandledWidget(self,widgetName,findString,widgetType):
-        self.parent.startAPICall()
-        self.parent.addressWidget(widgetName,"WEBELEMENT",self)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #self.parent.updateWidgets(widgetName,"WEBELEMENT")
-        directive=['addhandledwidget',addname+self.name,widgetName,findString,self.parent.spoolID,self.type,widgetType.lower()]
-        self.parent.passCall(directive)
-        self.parent.stopAPICall()
-
-
     def addTrayMenu(self,actionWidget,icon):
-        self.parent.startAPICall()
-        #sender = self.getSender()
         if type(actionWidget) != str:actionWidget=actionWidget.__name__
-        self.parent.addressWidget(actionWidget,"ACTION")
-        self.parent.updateWidgets(actionWidget,"ACTION")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         directive=['addtraymenu',actionWidget,icon,self.parent.spoolID,addname]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        self.passDirective(directive,actionWidget,"ACTION")
 
-    #add a menu action to the table header of the current widget
-    def addHeaderAction(self,actionWidget,actionText):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if type(actionWidget) != str:actionWidget=actionWidget.__name__
-        self.parent.addressWidget(actionWidget,"ACTION")
-        self.parent.updateWidgets(actionWidget,"ACTION")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addheaderaction',actionWidget,actionText,addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-    
-    def addVHeaderAction(self,actionWidget,actionText):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if type(actionWidget) != str:actionWidget=actionWidget.__name__
-        self.parent.addressWidget(actionWidget,"ACTION")
-        self.parent.updateWidgets(actionWidget,"ACTION")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addvheaderaction',actionWidget,actionText,addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-    
-    def assignHeaderWidget(self,actionWidget):
-        self.parent.startAPICall()
-        self.parent.addressWidget(actionWidget,"HEADERVIEW")
-        self.parent.updateWidgets(actionWidget,"HEADERVIEW")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['assignheaderwidget',actionWidget,"",addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive+["HINT:"+self.parent.moduleUN])
-        self.parent.stopAPICall()
-    
-    def assignVHeaderWidget(self,actionWidget):
-        self.parent.startAPICall()
-        self.parent.addressWidget(actionWidget,"HEADERVIEW")
-        self.parent.updateWidgets(actionWidget,"HEADERVIEW")
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['assignvheaderwidget',actionWidget,"",addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-    
-    def setActionMenu(self,actionMenu):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        self.parent.addressWidget(actionMenu,"MENU")
-        self.parent.updateWidgets(actionMenu,"MENU")
-        directive=['setactionmenu',actionMenu,"",addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
-    
     def addGridTab(self,tabText,gridWidgetName,tabWidgetName,makeActive=False):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridtab',addname+self.name,tabText,gridWidgetName,tabWidgetName,makeActive,self.type,False]
-        #self.parent.addressWidget(gridWidgetName,"TABLE")
+        directive=['addgridtab',self.getAddName()+self.name,tabText,gridWidgetName,tabWidgetName,makeActive,self.type,False]
         self.doAddAddress(gridWidgetName,"TABLE")
-        #self.parent.addressWidget(tabWidgetName,"TAB")
-        self.doAddAddress(tabWidgetName,"TAB")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        self.passDirective(directive,tabWidgetName,"TAB",False)
 
     def addEditor(self,editorWidgetName):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addeditor',addname+self.name,editorWidgetName,'','','',self.type]
-        self.doAddAddress(editorWidgetName,"EDITOR")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addeditor',self.getAddName()+self.name,editorWidgetName,'','','',self.type]
+        self.passDirective(directive,editorWidgetName,"EDITOR",False)
 
     def addGrid(self,gridWidgetName,layoutCell="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridtab',addname+self.name,"",gridWidgetName,layoutCell,False,self.type,False]
-        #self.parent.addressWidget(gridWidgetName,"TABLE")
-        self.doAddAddress(gridWidgetName,"TABLE")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addgridtab',self.getAddName()+self.name,"",gridWidgetName,layoutCell,False,self.type,False]
+        self.passDirective(directive,gridWidgetName,"TABLE",False)
 
     def addTree(self,gridWidgetName,layoutCell="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridtab',addname+self.name,"",gridWidgetName,layoutCell,False,self.type,True]
-        #self.parent.addressWidget(gridWidgetName,"TABLE")
-        self.doAddAddress(gridWidgetName,"TREE")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addgridtab',self.getAddName()+self.name,"",gridWidgetName,layoutCell,False,self.type,True]
+        self.passDirective(directive,gridWidgetName,"TREE",False)
     
     def startRecord(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['startrecord',addname+self.name]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['startrecord',self.getAddName()+self.name]
+        self.passDirective(directive)
     
     #add a tab to the current widget
     def addTab(self,tabText,widgetName=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['addtab',addname+self.name,tabText,widgetName]
-        #if widgetName!="":self.parent.__dict__[widgetName]=Widget(self.parent,widgetName,"WIDGET")
-        if widgetName!="":self.doAddAddress(widgetName,"WIDGET")
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addtab',self.getAddName()+self.name,tabText,widgetName]
+        self.passDirective(directive,widgetName,"WIDGET",False)
     
     #add an item to the current widget (ex: combobox)
     def addItem(self,itemText):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['additem',addname+self.name,self.parent.spoolID,self.type,itemText]
-        self.parent.passCall(directive,True)
-        self.parent.stopAPICall()
-        #if self.parent.addingClientSignal:
-        #    self.parent.clientBuffer.append(directive)
-        #    self.parent.stopAPICall()
-        #    return
-        #else:
-        #    self.parent.clientBuffer=[directive]
-        #self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        #self.parent.stopAPICall()
+        directive=['additem',self.getAddName()+self.name,self.parent.spoolID,self.type,itemText]
+        self.passDirective(directive)
     
     #add multiple items to the current widget
     def addItems(self,itemList):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['additems',addname+self.name,self.parent.spoolID,self.type,json.dumps(itemList)]
-        self.parent.passCall(directive,True)
-        self.parent.stopAPICall()
-        #if self.parent.addingClientSignal:
-        #    self.parent.clientBuffer.append(directive)
-        #    self.parent.stopAPICall()
-        #    return
-        #else:
-        #    self.parent.clientBuffer=[directive]
-        #self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        #self.parent.stopAPICall()
+        directive=['additems',self.getAddName()+self.name,self.parent.spoolID,self.type,json.dumps(itemList)]
+        self.passDirective(directive)
 
     def openSelect(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['openselect',addname+self.name,self.parent.spoolID,self.type]
-        self.parent.passCall(directive,True)
-        self.parent.stopAPICall()
+        directive=['openselect',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def addGridComboItems(self,itemList,key,index):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['addgridcomboitems',addname+self.name,self.parent.spoolID,self.type,itemList,key,index]
-        self.parent.passCall(directive,True)
-        self.parent.stopAPICall()
+        directive=['addgridcomboitems',self.getAddName()+self.name,self.parent.spoolID,self.type,itemList,key,index]
+        self.passDirective(directive)
 
     def setColumnComboItems(self,itemList,index):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['setcolumncomboitems',addname+self.name,self.parent.spoolID,self.type,itemList,index]
-        self.parent.passCall(directive,True)
-        self.parent.stopAPICall()
+        directive=['setcolumncomboitems',self.getAddName()+self.name,self.parent.spoolID,self.type,itemList,index]
+        self.passDirective(directive)
         
     def clearItems(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['clearitems',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['clearitems',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def progressOn(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['progresson',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['progresson',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         self.parent.flushBuffer()
 
     def progressOff(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['progressoff',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['progressoff',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     def clearDelegates(self):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['cleardelegates',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['cleardelegates',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
         
     #set the background color of the current widget
     def setBackColor(self,color):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setbackcolor',addname+self.name,color]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setbackcolor',self.getAddName()+self.name,color]
+        self.passDirective(directive)
     
     def setStyleSheet(self,styleString):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setstylesheet',addname+self.name,styleString]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setstylesheet',self.getAddName()+self.name,styleString]
+        self.passDirective(directive)
     
     def setSpan(self,startRow,startColumn,endRow,endColumn):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setspan',addname+self.name,startRow,startColumn,endRow,endColumn]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setspan',self.getAddName()+self.name,startRow,startColumn,endRow,endColumn]
+        self.passDirective(directive)
         
     def scrollToRow(self,tableRow,tableColumn=1):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['scrolltorow',addname+self.name,tableRow,tableColumn]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['scrolltorow',self.getAddName()+self.name,tableRow,tableColumn]
+        self.passDirective(directive)
     
     #set the foreground color of the current widget
     def setForeColor(self,color):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setforecolor',addname+self.name,color]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setforecolor',self.getAddName()+self.name,color]
+        self.passDirective(directive)
             
     #set the enabled status of the current widget
     def setEnabled(self,enableSetting,immediate=True,subWidgetDat=""):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setenabled',addname+self.name,self.parent.spoolID,self.type,enableSetting,subWidgetDat]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        elif not True:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setenabled',self.getAddName()+self.name,self.parent.spoolID,self.type,enableSetting,subWidgetDat]
+        self.passDirective(directive)
 
     def setFormat(self,subWidgetDat,sformat):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setformat',addname+self.name,self.parent.spoolID,self.type,subWidgetDat,sformat]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setformat',self.getAddName()+self.name,self.parent.spoolID,self.type,subWidgetDat,sformat]
+        self.passDirective(directive)
         
     #set the enabled status of the current widget
     def setReadOnly(self,enableSetting,immediate=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setreadonly',addname+self.name,self.parent.spoolID,self.type,enableSetting]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setreadonly',self.getAddName()+self.name,self.parent.spoolID,self.type,enableSetting]
+        self.passDirective(directive)
 
     def setTitleText(self,theText,immediate=True):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['settitletext',addname+self.name,self.parent.spoolID,self.type,theText]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        elif not immediate:
-            self.parent.valueBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['settitletext',self.getAddName()+self.name,self.parent.spoolID,self.type,theText]
+        self.passDirective(directive)
 
     def addButtonListOptions(self,optionList):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['addbuttonlistoptions',addname+self.name,self.parent.spoolID,self.type,optionList]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addbuttonlistoptions',self.getAddName()+self.name,self.parent.spoolID,self.type,optionList]
+        self.passDirective(directive)
 
     #set the width of the current widget
     def setWidth(self,width,layoutPosition="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setwidth',addname+self.name,self.parent.spoolID,self.type,width,layoutPosition]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setwidth',self.getAddName()+self.name,self.parent.spoolID,self.type,width,layoutPosition]
+        self.passDirective(directive)
         
     #set the widget of the current widget
     def setWidget(self,widget):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(widget) != str:awidget=widget.name
         else:awidget=widget
-        #sender = self.getSender()
-        directive=['setwidget',addname+self.name,self.parent.spoolID,awidget]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setwidget',self.getAddName()+self.name,self.parent.spoolID,awidget]
+        self.passDirective(directive)
         
     #set the widget of the current widget
     def addWidget(self,widget):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(widget) != str:awidget=widget.name
         else:awidget=widget
-        #sender = self.getSender()
-        directive=['addwidget',addname+self.name,self.parent.spoolID,awidget]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addwidget',self.getAddName()+self.name,self.parent.spoolID,awidget]
+        self.passDirective(directive)
         
     #set the layout of the current widget
     def setLayout(self,widget):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(widget) != str:awidget=widget.name
         else:awidget=widget
-        #sender = self.getSender()
-        directive=['setlayout',addname+self.name,self.parent.spoolID,awidget]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setlayout',self.getAddName()+self.name,self.parent.spoolID,awidget]
+        self.passDirective(directive)
         
     def addWidgetRow(self,widget):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         if type(widget) != str:awidget=widget.name
         else:awidget=widget
-        #sender = self.getSender()
-        directive=['addwidgetrow',addname+self.name,self.parent.spoolID,awidget]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['addwidgetrow',self.getAddName()+self.name,self.parent.spoolID,awidget]
+        self.passDirective(directive)
 
     def setMinimumWidth(self,width):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setminimumwidth',addname+self.name,self.parent.spoolID,self.type,width]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setminimumwidth',self.getAddName()+self.name,self.parent.spoolID,self.type,width]
+        self.passDirective(directive)
 
     def setWidgetResizeable(self,abool):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setwidgetresizeable',addname+self.name,self.parent.spoolID,self.type,abool]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setwidgetresizeable',self.getAddName()+self.name,self.parent.spoolID,self.type,abool]
+        self.passDirective(directive)
 
     def setFixedHeight(self,height):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setfixedheight',addname+self.name,self.parent.spoolID,self.type,height]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setfixedheight',self.getAddName()+self.name,self.parent.spoolID,self.type,height]
+        self.passDirective(directive)
 
     #set the height of the current widget
     def setHeight(self,height,layoutPosition="a"):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setheight',addname+self.name,self.parent.spoolID,str(self.type),height,layoutPosition]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setheight',self.getAddName()+self.name,self.parent.spoolID,str(self.type),height,layoutPosition]
+        self.passDirective(directive)
 
     def resize(self):
-        self.parent.startAPICall()
-        #sender = self.getSender()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        directive=['resize',addname+self.name,self.parent.spoolID,self.type]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['resize',self.getAddName()+self.name,self.parent.spoolID,self.type]
+        self.passDirective(directive)
 
     def setGeometry(self,geometry):
-        self.parent.startAPICall()
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
-        directive=['setgeometry',addname+self.name,self.parent.spoolID,self.type,geometry]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['setgeometry',self.getAddName()+self.name,self.parent.spoolID,self.type,geometry]
+        self.passDirective(directive)
 
     #internal function used to delete something from the memory cache
     def delete(self,key):
@@ -6445,15 +3205,8 @@ class Widget(object):
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
         #sender = self.getSender()
-        directive=['hiderows',addname+self.name,self.parent.spoolID,str(self.type),keys]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall()
+        directive=['hiderows',self.getAddName()+self.name,self.parent.spoolID,str(self.type),keys]
+        self.passDirective(directive)
 
     def showRows(self,keysOrKeyType="data"):
         self.parent.startAPICall()
@@ -6471,15 +3224,8 @@ class Widget(object):
         if not self.parentWidget is None:addname = self.getAddName()
         else:addname=""
         #sender = self.getSender()
-        directive=['showrows',addname+self.name,self.parent.spoolID,str(self.type),keys]
-        if self.parent.addingClientSignal:
-            self.parent.clientBuffer.append(directive)
-            self.parent.stopAPICall()
-            return
-        else:
-            self.parent.clientBuffer=[directive]
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        self.parent.stopAPICall() 
+        directive=['showrows',self.getAddName()+self.name,self.parent.spoolID,str(self.type),keys]
+        self.passDirective(directive) 
 
     def getSearchDat(self,searchText,limitOfSearch,keyOnly=""):
 
