@@ -8,8 +8,7 @@ import traceback
 import os
 import sys
 import glob
-#import filestubs
-import imp
+import filestubs
 import re
 from bson.objectid import ObjectId
 from datetime import timedelta, datetime
@@ -713,7 +712,6 @@ class spool(object):
         self.passDirective(directive)
 
     def hasClipboardText(self):
-        self.startAPICall()
         directive=['hasclipboardtext',self.spoolID]+['blockingCall']
         return self.passDirective(directive)
         
@@ -744,12 +742,10 @@ class spool(object):
 
     #get a global that is stored on the client side
     def getGlobal(self,value):
-        self.startAPICall()
         directive=['getglobal',value,self.spoolID,"VALUE"]+['blockingCall']
         return self.passDirective(directive)
 
     def getWindowTitle(self):
-        self.startAPICall()
         directive=['getwindowtitle',self.spoolID]+['blockingCall']
         return self.passDirective(directive)
 
@@ -790,7 +786,6 @@ class spool(object):
 
     #show a message box on the client screen
     def colorDialog(self,title):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["colordialog",title,self.spoolID]+['blockingCall']
         return self.passDirective(directive)
@@ -831,7 +826,6 @@ class spool(object):
         self.stopAPICall()
 
     def makeSocketObject(self,objectName,hostname="",port=0):
-        self.startAPICall()
         directive=['makesocketobject',objectName,hostname,port]
         self.passDirective(directive,objectName,"TCPSOCKET")
 
@@ -972,7 +966,6 @@ class spool(object):
         return self.passDirective(directive)
 
     def focusWidget(self):
-        self.startAPICall()
         self.cache.delete(self.spoolID+"receive"+self.threadID)
         directive=["focuswidget",'',self.spoolID]+['blockingCall']
         return self.passDirective(directive)
@@ -1051,26 +1044,48 @@ class spool(object):
 
     #create quickbooks object
     def createQBObject(self,widgetName,filepath):
-        self.startAPICall()
         directive=['createqbobject',widgetName,self.spoolID,filepath]+['blockingCall']
         return self.passDirective(directive,widgetName,"QBOBJECT")
 
     #show a dialog box and if the dialog ui does not exist for this dialog create it
     #and if the mod does not exist for this dialog create it as well.
     #Then display the dialog client side and make it the main screen
+    def dialogBoxNew(self,dialog,title,width=0,height=0,actionDef="",widgetUI="",software=""):
+        if software=="":software=self.software
+        if type(actionDef) != str:actionDef=actionDef.__name__
+        if type(widgetUI)  != str:widgetUI=widgetUI.name
+        dialog=dialog.upper()
+        self.cache.delete(self.spoolID+"receive"+self.threadID)
+        directive=["dialogbox",title,self.spoolID,dialog,width,height,self.currentModName,actionDef,widgetUI,software]
+        self.passDirective(directive,dialog.lower(),"DIALOGBOX")
+
     def dialogBox(self,dialog,title,width=0,height=0,actionDef="",widgetUI="",software=""):
+        self.startAPICall()
+        #self.flushBuffer()
         if software=="":software=self.software
         if type(actionDef) != str:actionDef=actionDef.__name__
         if type(widgetUI)  != str:widgetUI=widgetUI.name
         dialog=dialog.upper()
         try:
             uifile = glob.glob('obj' + software + sep + dialog.upper() + '.ui')
+            if len(uifile)==0:
+                self.createDialogUI('obj' + software + sep + dialog.upper() + '.ui')
             module = glob.glob('obj' + software + sep + "mod_" + dialog.upper() + '.p*')
+            if len(module)==0:
+                self.createModFile('obj' + software + sep + "mod_" + dialog.upper() + '.py',"mod")
         except:
             pass
         self.cache.delete(self.spoolID+"receive"+self.threadID)
+        self.addressWidget(dialog.lower(),"DIALOGBOX")
         directive=["dialogbox",title,self.spoolID,dialog,width,height,self.currentModName,actionDef,widgetUI,software]
-        self.passDirective(directive,dialog.lower(),"DIALOGBOX")
+        if self.addingClientSignal:
+            self.clientBuffer.append(directive)
+            self.stopAPICall()
+            return
+        else:
+            self.clientBuffer=[directive]
+        self.cache.append(self.spoolID+"send"+self.threadID,directive)
+        self.stopAPICall()
         
     def softwareDialog(self,software,title,actionDef="",width=0,height=0):
         self.assignWidgetUI(software+"module",software,software)
@@ -1100,8 +1115,6 @@ class spool(object):
         self.passDirective(directive,widgetName,"CAMERAWIDGET")
 
     def exitModule(self,moduleToExit=""):
-        #self.flushBuffer()
-        self.startAPICall()
         directive=["exitmodule",moduleToExit]
         self.passDirective(directive)
         if moduleToExit=="":
@@ -1150,7 +1163,6 @@ class spool(object):
         self.passDirective(directive)
     
     def setWindowIconFromResource(self,pngfile,window):
-        self.startAPICall()
         directive=['setwindowiconfromresource',pngfile,window]
         self.passDirective(directive)
 
@@ -1159,7 +1171,6 @@ class spool(object):
         self.passDirective(directive)
 
     def raiseScreen(self):
-        self.startAPICall()
         directive=['raisescreen',self.spoolID]
         self.passDirective(directive)
 
@@ -1211,7 +1222,6 @@ class spool(object):
         return False
 
     def getValueList(self,*args,**kwargs):
-        self.startAPICall()
         valList  = []
         typeList = []
         valTypeListFill=False
@@ -1241,6 +1251,7 @@ class spool(object):
         directive=["getvaluelist",valList,self.spoolID,typeList,valTypeList,valExtraList]+['blockingCall']
         currdata = self.passDirective(directive)
         if type(currdata) is str:currdata=currdata.split(",")
+        currcnt=0
         if not type(currdata) is bool:
             for arg in args:
                 if typeList[currcnt]=="TABLE":
@@ -1671,7 +1682,6 @@ class Widget(object):
             return ""
 
     def show(self,widgetname=""):
-        self.parent.startAPICall()
         if not self.name+"hse" in self.parent.__dict__:
             directive=['show',self.getAddName()+self.name,self.parent.spoolID,self.type,widgetname]
         else:
@@ -2195,7 +2205,6 @@ class Widget(object):
         
    
     def createWindow(self,windowname,width,height,datatype,data,title,modal,maximize=False,windowParent=None,widgetLib="",*args,**kwargs):
-        self.parent.startAPICall()
         self.parent.tracelog.write("CREATING WINDOW for lib "+widgetLib)
         if windowParent==None:
             self.parent.addressWidget(windowname,"DIALOG",None,widgetLib)
@@ -2211,8 +2220,6 @@ class Widget(object):
                 self.parent.__dict__[windowParent.name].addressWidget(windowname,"DIALOG")
                 awidget = self.parent.__dict__[windowParent.name].__dict__[windowname]
                 wpaddname = windowParent.getAddName() +  windowParent.name
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         directive=['createwindow',self.getAddName()+self.name,self.parent.spoolID,self.type,windowname,width,height,datatype,data,modal,title,maximize,wpaddname]+['blockingCall']
         currdata = self.passDirective(directive)
         if widgetLib!="":
@@ -2253,8 +2260,6 @@ class Widget(object):
     def setAJAX(self,function):
         awidget = self.parent.__dict__[self.name]
         wpaddname=""
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         directive=['setajax',self.getAddName()+self.name,self.parent.spoolID,self.type,function,wpaddname]+['blockingCall']
         self.value=function
         currdata = self.passDirective(directive)
@@ -2281,12 +2286,10 @@ class Widget(object):
         return self.value
 
     def addStackedWidget(self,widgetName,indexQty,activeIndex=0,cell=""):
-        immediate=True
         for d in range(0,indexQty):
             self.doAddAddress(widgetName+str(d),"LAYOUT")
             self.doAddAddress(widgetName+"Div"+str(d),"HTMLELEMENT")
             self.parent.__dict__[widgetName+str(d)+"hse"] = widgetName+"Div"+str(d)  #internally used only during hide / show
-        self.doAddAddress(widgetName,"STACKEDWIDGET")
         directive=['addstackedwidget',self.getAddName()+self.name,self.parent.spoolID,self.type,indexQty,activeIndex,widgetName,cell]
         self.passDirective(directive,widgetName,"STACKEDWIDGET",False)
              
@@ -2478,21 +2481,9 @@ class Widget(object):
     def md5_for_remote_file(self,afile):
         self.parent.startAPICall()
         self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         directive=['getmd5',self.getAddName()+self.name,self.parent.spoolID,self.type,afile]+['blockingCall']
-        self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
-        acnt=0
-        while True:
-            currdata=self.parent.cache.get(self.parent.spoolID+"receive"+self.threadID)
-            acnt+=1
-            time.sleep(.01)
-            if acnt==self.parent.acnt:break
-            if currdata!=[]:
-               self.parent.cache.delete(self.parent.spoolID+"receive"+self.threadID)
-               break
-        self.parent.stopAPICall()
-        return currdata
+        self.value = self.passDirective(directive)
+        return self.value
         
     #send a file from the server to the client 
     def sendFile(self,afile):
@@ -2510,8 +2501,6 @@ class Widget(object):
         remoteMD5 = self.md5_for_remote_file("images"+sep+imageFile)
         if localMD5!=remoteMD5:
             self.sendFile("images"+sep+imageFile)
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
         directive=['setpixmap',self.getAddName()+self.name,self.parent.spoolID,self.type,"images"+sep+imageFile]
         self.parent.cache.append(self.parent.spoolID+"send"+self.threadID,directive)
         self.parent.stopAPICall()
@@ -2596,7 +2585,6 @@ class Widget(object):
         return retItems
 
     def addForm(self,formWidget,formdata,cell="a"):
-        self.parent.startAPICall()
         if type(formWidget) != str:formWidget = formWidget.name
         retformdata = []
         for item in formdata:
@@ -2762,7 +2750,7 @@ class Widget(object):
         
     def addTrayMenu(self,actionWidget,icon):
         if type(actionWidget) != str:actionWidget=actionWidget.__name__
-        directive=['addtraymenu',actionWidget,icon,self.parent.spoolID,addname]
+        directive=['addtraymenu',actionWidget,icon,self.parent.spoolID,self.getAddName()+self.name]
         self.passDirective(directive,actionWidget,"ACTION")
 
     def addGridTab(self,tabText,gridWidgetName,tabWidgetName,makeActive=False):
@@ -3202,9 +3190,6 @@ class Widget(object):
         else:
             self.parent.stopAPICall()
             return
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
         directive=['hiderows',self.getAddName()+self.name,self.parent.spoolID,str(self.type),keys]
         self.passDirective(directive)
 
@@ -3221,9 +3206,6 @@ class Widget(object):
         else:
             self.parent.stopAPICall()
             return
-        if not self.parentWidget is None:addname = self.getAddName()
-        else:addname=""
-        #sender = self.getSender()
         directive=['showrows',self.getAddName()+self.name,self.parent.spoolID,str(self.type),keys]
         self.passDirective(directive) 
 
@@ -4114,7 +4096,5 @@ class genxml:
         for name,value in valdict.items():
             self.addValue(name,str(value))
 
-
 def tr(words):
     return words
-
